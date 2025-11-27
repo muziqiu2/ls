@@ -5,11 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>拉屎记录器</title>
     <!-- Tailwind CSS v3 -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="libs/js/tailwindcss.js"></script>
     <!-- Font Awesome -->
-    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link href="libs/css/font-awesome.min.css" rel="stylesheet">
     <!-- Chart.js -->
-    <script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+    <script src="libs/js/chart.umd.min.js"></script>
+    <!-- 外部样式文件 -->
+    <link rel="stylesheet" href="styles.css">
     <!-- 统一的 Tailwind 配置 -->
     <script>
         tailwind.config = {
@@ -79,60 +81,13 @@
             }
         }
     </style>
-    <style>
-        /* 滑动容器样式 */
-        .swipe-container {
-            overflow: hidden;
-            position: relative;
-            width: 100%;
-            height: calc(100vh - 12rem);
-        }
-        
-        .swipe-wrapper {
-            display: flex;
-            height: 100%;
-            transition: transform 0.3s ease;
-        }
-        
-        .swipe-card {
-            flex: 0 0 100%;
-            height: 100%;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        
-        /* 自定义滚动条 */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 10px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-        
-        /* 触摸反馈 */
-        .touch-feedback {
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
-        }
-    </style>
 </head>
 <body class="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen">
     <div class="container mx-auto px-4 py-6 max-w-md">
         <!-- 头部 -->
         <header class="text-center mb-4">
             <h1 class="text-3xl font-bold text-neutral-dark mb-1 flex items-center justify-center">
-                <i class="fa fa-poop text-primary mr-2 animate-bounce-slow"></i>
+                <i class="fa-solid fa-poop text-primary mr-2 animate-bounce-slow"></i>
                 拉屎记录器
             </h1>
             <p class="text-gray-600 text-sm">轻松记录您的排便习惯</p>
@@ -142,19 +97,19 @@
         <div class="flex justify-between items-center mb-4 px-2">
             <div class="flex-1 text-center">
                 <button class="tab-btn w-full py-3 text-lg font-medium relative" data-index="0">
-                    <i class="fa fa-plus-circle mr-1"></i> 添加
+                    <i class="fa-solid fa-plus-circle mr-1"></i> 添加
                     <span class="tab-indicator absolute bottom-0 left-0 w-full bg-primary"></span>
                 </button>
             </div>
             <div class="flex-1 text-center">
                 <button class="tab-btn w-full py-3 text-lg font-medium relative text-gray-500" data-index="1">
-                    <i class="fa fa-list-alt mr-1"></i> 历史
+                    <i class="fa-solid fa-list-alt mr-1"></i> 历史
                     <span class="tab-indicator absolute bottom-0 left-0 w-0 bg-secondary"></span>
                 </button>
             </div>
             <div class="flex-1 text-center">
                 <button class="tab-btn w-full py-3 text-lg font-medium relative text-gray-500" data-index="2">
-                    <i class="fa fa-chart-line mr-1"></i> 分析
+                    <i class="fa-solid fa-chart-line mr-1"></i> 分析
                     <span class="tab-indicator absolute bottom-0 left-0 w-0 bg-accent"></span>
                 </button>
             </div>
@@ -167,9 +122,13 @@
                 <div class="swipe-card p-2">
                     <div class="card h-full flex flex-col">
                         <h2 class="section-title">
-                            <i class="fa fa-plus-circle"></i> 添加记录
+                            <i class="fa-solid fa-plus-circle"></i> 添加记录
                         </h2>
                         <form id="recordForm" class="space-y-5 flex-grow">
+                            <div>
+                                <label for="recordTime" class="block text-gray-700 mb-2 font-medium text-lg">时间</label>
+                                <input type="datetime-local" id="recordTime" class="input-field">
+                            </div>
                             <div>
                                 <label for="location" class="block text-gray-700 mb-2 font-medium text-lg">地点</label>
                                 <div class="flex">
@@ -187,11 +146,21 @@
                                 <input type="text" id="otherLocation" class="input-field" placeholder="请输入地点">
                             </div>
                             <div>
+                                <label for="type" class="block text-gray-700 mb-2 font-medium text-lg">类型 (可选)</label>
+                                <select id="type" class="input-field">
+                                    <option value="">请选择类型</option>
+                                    <option value="正常">正常</option>
+                                    <option value="干燥">干燥</option>
+                                    <option value="稀便">稀便</option>
+                                    <option value="腹泻">腹泻</option>
+                                </select>
+                            </div>
+                            <div>
                                 <label for="notes" class="block text-gray-700 mb-2 font-medium text-lg">备注 (可选)</label>
                                 <textarea id="notes" class="input-field" rows="3" placeholder="添加备注信息"></textarea>
                             </div>
                             <button type="submit" class="btn-primary w-full mt-auto">
-                                <i class="fa fa-check mr-2"></i> 记录
+                                <i class="fa-solid fa-check mr-2"></i> 记录
                             </button>
                         </form>
                     </div>
@@ -200,21 +169,41 @@
                 <!-- 记录列表卡片 -->
                 <div class="swipe-card p-2">
                     <div class="card h-full flex flex-col">
-                        <div class="flex justify-between items-center mb-4">
-                            <h2 class="section-title mb-0">
-                                <i class="fa fa-list-alt"></i> 历史记录
-                            </h2>
-                            <div class="flex space-x-2">
-                                <button id="filterBtn" class="btn-secondary btn-sm">
-                                    <i class="fa fa-filter mr-1"></i> 筛选
+                        <div class="mb-4">
+                            <!-- 搜索栏 -->
+                            <div class="flex items-center space-x-2 mb-3">
+                                <div class="flex-grow relative">
+                                    <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                    <input type="text" id="searchInput" placeholder="搜索地点或备注..." class="input-field pl-10 pr-3 py-2 w-full">
+                                </div>
+                                <button id="clearSearchBtn" class="btn-secondary btn-sm hidden">
+                                    <i class="fa-solid fa-times mr-1"></i> 清除搜索
                                 </button>
-                                <button id="exportBtn" class="btn-accent btn-sm">
-                                    <i class="fa fa-download mr-1"></i> 导出
+                            </div>
+                            
+                            <!-- 操作按钮 -->
+                            <div class="flex justify-between items-center">
+                                <h2 class="section-title mb-0">
+                                    <i class="fa-solid fa-list-alt"></i> 历史记录
+                                </h2>
+                                <div class="flex space-x-2">
+                                    <button id="filterBtn" class="btn-secondary btn-sm">
+                                        <i class="fa-solid fa-filter mr-1"></i> 筛选
+                                    </button>
+                                    <button id="exportBtn" class="btn-accent btn-sm">
+                                        <i class="fa-solid fa-download mr-1"></i> 导出
+                                    </button>
+                                    <button id="importBtn" class="btn-secondary btn-sm">
+                                    <i class="fa-solid fa-upload mr-1"></i> 导入
                                 </button>
-                                <button id="importBtn" class="btn-secondary btn-sm">
-                                    <i class="fa fa-upload mr-1"></i> 导入
+                                <button id="backupBtn" class="btn-secondary btn-sm">
+                                    <i class="fa-solid fa-database mr-1"></i> 备份
+                                </button>
+                                <button id="settingsBtn" class="btn-secondary btn-sm">
+                                    <i class="fa-solid fa-cog mr-1"></i> 设置
                                 </button>
                                 <input type="file" id="importFile" accept=".json" class="hidden">
+                                </div>
                             </div>
                         </div>
                         
@@ -240,12 +229,30 @@
                             </div>
                         </div>
                         
+                        <!-- 筛选条件显示 -->
+                        <div id="activeFilters" class="hidden bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <i class="fa-solid fa-filter text-blue-500 mr-2"></i>
+                                    <span class="text-sm font-medium text-blue-800">当前筛选条件：</span>
+                                    <span id="filterText" class="text-sm text-blue-700 ml-1"></span>
+                                </div>
+                                <button id="clearFiltersBtn" class="text-blue-500 hover:text-blue-700 text-sm font-medium">
+                                    清除筛选
+                                </button>
+                            </div>
+                        </div>
+                        
                         <!-- 记录列表列表 -->
                         <div id="recordsList" class="flex-grow overflow-y-auto pr-2 space-y-3">
                             <!-- 记录将通过 JavaScript 动态添加 -->
                             <div class="text-center text-gray-500 py-8" id="emptyState">
-                                <i class="fa fa-info-circle text-3xl mb-2"></i>
-                                <p>暂无记录，点击"添加记录"开始</p>
+                                <i class="fa-solid fa-poop text-4xl mb-3 text-primary animate-bounce-slow"></i>
+                                <h3 class="text-xl font-bold mb-2 text-neutral-dark">暂无排便记录</h3>
+                                <p class="mb-4">点击顶部"添加"标签开始记录您的第一次排便</p>
+                                <button class="btn-primary btn-sm mx-auto" onclick="switchTab(0)">
+                                    <i class="fa-solid fa-plus-circle mr-1"></i> 添加第一条记录
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -255,7 +262,7 @@
                 <div class="swipe-card p-2">
                     <div class="card h-full flex flex-col">
                         <h2 class="section-title">
-                            <i class="fa fa-chart-line"></i> 排便趋势分析
+                            <i class="fa-solid fa-chart-line"></i> 排便趋势分析
                         </h2>
                         <div class="grid grid-cols-1 gap-4 mb-4">
                             <div class="bg-neutral rounded-xl p-4 text-center">
@@ -274,6 +281,34 @@
                                 <p class="text-gray-500 text-sm">TOP 1</p>
                             </div>
                         </div>
+                        
+                        <!-- 图表设置 -->
+                        <div class="mb-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <!-- 图表类型选择 -->
+                                <div>
+                                    <label class="block text-gray-700 mb-2 text-base">图表类型</label>
+                                    <select id="chartType" class="input-field text-base">
+                                        <option value="line">折线图</option>
+                                        <option value="bar">柱状图</option>
+                                        <option value="pie">饼图（按地点）</option>
+                                    </select>
+                                </div>
+                                <!-- 时间范围选择 -->
+                                <div>
+                                    <label class="block text-gray-700 mb-2 text-base">时间范围</label>
+                                    <select id="timeRange" class="input-field text-base">
+                                        <option value="7">最近7天</option>
+                                        <option value="14" selected>最近14天</option>
+                                        <option value="30">最近30天</option>
+                                        <option value="90">最近90天</option>
+                                        <option value="all">全部</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 图表容器 -->
                         <div class="flex-grow">
                             <canvas id="trendChart" height="200"></canvas>
                         </div>
@@ -289,7 +324,10 @@
     <div id="deleteModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
             <h3 class="text-xl font-bold text-neutral-dark mb-4">确认删除</h3>
-            <p class="text-gray-600 mb-6">您确定要删除这条记录吗？此操作无法撤销。</p>
+            <p class="text-gray-600 mb-4">您确定要删除这条记录吗？此操作无法撤销。</p>
+            <div id="deleteRecordInfo" class="bg-gray-50 rounded-lg p-4 mb-6">
+                <!-- 被删除记录信息将通过JavaScript动态添加 -->
+            </div>
             <div class="flex justify-end space-x-3">
                 <button id="cancelDeleteBtn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
                     取消
@@ -301,689 +339,130 @@
         </div>
     </div>
 
-    <!-- 导入成功提示 -->
-    <div id="importSuccessToast" class="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50">
-        <div class="flex items-center">
-            <i class="fa fa-check-circle mr-2"></i>
-            <span>导入成功！</span>
+    <!-- 编辑记录模态框 -->
+    <div id="editModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
+            <h3 class="text-xl font-bold text-neutral-dark mb-4">编辑记录</h3>
+            <form id="editForm" class="space-y-5">
+                <div>
+                    <label for="editTime" class="block text-gray-700 mb-2 font-medium text-lg">时间</label>
+                    <input type="datetime-local" id="editTime" class="input-field">
+                </div>
+                <div>
+                    <label for="editLocation" class="block text-gray-700 mb-2 font-medium text-lg">地点</label>
+                    <div class="flex">
+                        <select id="editLocation" class="input-field">
+                            <option value="家里">家里</option>
+                            <option value="公司">公司</option>
+                            <option value="学校">学校</option>
+                            <option value="公共场所">公共场所</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="editOtherLocationContainer" class="hidden">
+                    <label for="editOtherLocation" class="block text-gray-700 mb-2 font-medium text-lg">其他地点</label>
+                    <input type="text" id="editOtherLocation" class="input-field" placeholder="请输入地点">
+                </div>
+                <div>
+                    <label for="editType" class="block text-gray-700 mb-2 font-medium text-lg">类型 (可选)</label>
+                    <select id="editType" class="input-field">
+                        <option value="">请选择类型</option>
+                        <option value="正常">正常</option>
+                        <option value="干燥">干燥</option>
+                        <option value="稀便">稀便</option>
+                        <option value="腹泻">腹泻</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="editNotes" class="block text-gray-700 mb-2 font-medium text-lg">备注 (可选)</label>
+                    <textarea id="editNotes" class="input-field" rows="3" placeholder="添加备注信息"></textarea>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="cancelEditBtn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                        取消
+                    </button>
+                    <button type="submit" class="btn-primary">
+                        保存修改
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <script>
-        // 全局变量
-        let records = JSON.parse(localStorage.getItem('poopRecords')) || [];
-        let currentRecordId = null;
-        let trendChart = null;
-        let currentTabIndex = 0;
-        let startX = 0;
-        let isScrolling = false;
-
-        // DOM 元素
-        const recordForm = document.getElementById('recordForm');
-        const locationSelect = document.getElementById('location');
-        const otherLocationContainer = document.getElementById('otherLocationContainer');
-        const otherLocationInput = document.getElementById('otherLocation');
-        const notesInput = document.getElementById('notes');
-        const recordsList = document.getElementById('recordsList');
-        const emptyState = document.getElementById('emptyState');
-        const filterBtn = document.getElementById('filterBtn');
-        const filterContainer = document.getElementById('filterContainer');
-        const startDateInput = document.getElementById('startDate');
-        const endDateInput = document.getElementById('endDate');
-        const applyFilterBtn = document.getElementById('applyFilterBtn');
-        const resetFilterBtn = document.getElementById('resetFilterBtn');
-        const exportBtn = document.getElementById('exportBtn');
-        const importBtn = document.getElementById('importBtn');
-        const importFileInput = document.getElementById('importFile');
-        const deleteModal = document.getElementById('deleteModal');
-        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
-        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-        const importSuccessToast = document.getElementById('importSuccessToast');
-        const avgIntervalElement = document.getElementById('avgInterval');
-        const weeklyCountElement = document.getElementById('weeklyCount');
-        const commonLocationElement = document.getElementById('commonLocation');
-        const tabBtns = document.querySelectorAll('.tab-btn');
-        const swipeContainer = document.querySelector('.swipe-container');
-        const swipeWrapper = document.querySelector('.swipe-wrapper');
-        const swipeCards = document.querySelectorAll('.swipe-card');
-
-        // 初始化
-        document.addEventListener('DOMContentLoaded', () => {
-            renderRecords();
-            updateStatistics();
-            initChart();
-            initSwipeEvents();
-
-            // 设置默认日期为今天
-            const today = new Date().toISOString().split('T')[0];
-            endDateInput.value = today;
-            
-            // 设置开始日期为一周前
-            const oneWeekAgo = new Date();
-            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-            startDateInput.value = oneWeekAgo.toISOString().split('T')[0];
-        });
-
-        // 初始化滑动事件
-        function initSwipeEvents() {
-            // 标签按钮点击事件
-            tabBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const index = parseInt(btn.dataset.index);
-                    switchTab(index);
-                });
-            });
-
-            // 触摸事件
-            swipeContainer.addEventListener('touchstart', handleTouchStart, false);
-            swipeContainer.addEventListener('touchmove', handleTouchMove, false);
-            swipeContainer.addEventListener('touchend', handleTouchEnd, false);
-
-            // 鼠标事件（用于测试）
-            swipeContainer.addEventListener('mousedown', handleMouseDown, false);
-            swipeContainer.addEventListener('mousemove', handleMouseMove, false);
-            swipeContainer.addEventListener('mouseup', handleMouseUp, false);
-            swipeContainer.addEventListener('mouseleave', handleMouseUp, false);
-        }
-
-        // 触摸开始事件
-        function handleTouchStart(e) {
-            startX = e.touches[0].clientX;
-            isScrolling = false;
-            swipeWrapper.style.transition = 'none';
-        }
-
-        // 触摸移动事件
-        function handleTouchMove(e) {
-            if (!startX) return;
-
-            const currentX = e.touches[0].clientX;
-            const diffX = startX - currentX;
-            
-            // 判断是否为滑动操作
-            if (Math.abs(diffX) > 10) {
-                isScrolling = true;
-                e.preventDefault();
-                
-                // 计算滑动距离
-                const translateValue = -currentTabIndex * 100 + (diffX / swipeContainer.offsetWidth * 100);
-                swipeWrapper.style.transform = `translateX(${translateValue}%)`;
-            }
-        }
-
-        // 触摸结束事件
-        function handleTouchEnd(e) {
-            if (!startX || !isScrolling) {
-                startX = 0;
-                return;
-            }
-
-            const currentX = e.changedTouches[0].clientX;
-            const diffX = startX - currentX;
-            
-            // 判断是否切换标签
-            if (Math.abs(diffX) > swipeContainer.offsetWidth * 0.2) {
-                if (diffX > 0 && currentTabIndex < swipeCards.length - 1) {
-                    // 向右滑动，显示下一个标签
-                    switchTab(currentTabIndex + 1);
-                } else if (diffX < 0 && currentTabIndex > 0) {
-                    // 向左滑动，显示上一个标签
-                    switchTab(currentTabIndex - 1);
-                } else {
-                    // 滑动距离不足，恢复原位
-                    switchTab(currentTabIndex);
-                }
-            } else {
-                // 滑动距离不足，恢复原位
-                switchTab(currentTabIndex);
-            }
-
-            startX = 0;
-            isScrolling = false;
-        }
-
-        // 鼠标按下事件（用于测试）
-        function handleMouseDown(e) {
-            startX = e.clientX;
-            isScrolling = false;
-            swipeWrapper.style.transition = 'none';
-            swipeContainer.style.cursor = 'grabbing';
-        }
-
-        // 鼠标移动事件（用于测试）
-        function handleMouseMove(e) {
-            if (!startX) return;
-
-            const currentX = e.clientX;
-            const diffX = startX - currentX;
-            
-            // 判断是否为滑动操作
-            if (Math.abs(diffX) > 10) {
-                isScrolling = true;
-                
-                // 计算滑动距离
-                const translateValue = -currentTabIndex * 100 + (diffX / swipeContainer.offsetWidth * 100);
-                swipeWrapper.style.transform = `translateX(${translateValue}%)`;
-            }
-        }
-
-        // 鼠标释放事件（用于测试）
-        function handleMouseUp(e) {
-            if (!startX || !isScrolling) {
-                startX = 0;
-                swipeContainer.style.cursor = 'grab';
-                return;
-            }
-
-            const currentX = e.clientX;
-            const diffX = startX - currentX;
-            
-            // 判断是否切换标签
-            if (Math.abs(diffX) > swipeContainer.offsetWidth * 0.2) {
-                if (diffX > 0 && currentTabIndex < swipeCards.length - 1) {
-                    // 向右滑动，显示下一个标签
-                    switchTab(currentTabIndex + 1);
-                } else if (diffX < 0 && currentTabIndex > 0) {
-                    // 向左滑动，显示上一个标签
-                    switchTab(currentTabIndex - 1);
-                } else {
-                    // 滑动距离不足，恢复原位
-                    switchTab(currentTabIndex);
-                }
-            } else {
-                // 滑动距离不足，恢复原位
-                switchTab(currentTabIndex);
-            }
-
-            startX = 0;
-            isScrolling = false;
-            swipeContainer.style.cursor = 'grab';
-        }
-
-        // 切换标签
-        function switchTab(index) {
-            if (index < 0 || index >= swipeCards.length) return;
-            
-            currentTabIndex = index;
-            
-            // 更新滑动容器位置
-            swipeWrapper.style.transition = 'transform 0.3s ease';
-            swipeWrapper.style.transform = `translateX(-${index * 100}%)`;
-            
-            // 更新标签按钮样式
-            tabBtns.forEach((btn, i) => {
-                const indicator = btn.querySelector('.tab-indicator');
-                
-                if (i === index) {
-                    btn.classList.remove('text-gray-500');
-                    indicator.classList.add('w-full');
-                    
-                    // 设置对应颜色
-                    if (i === 0) indicator.classList.add('bg-primary');
-                    else if (i === 1) indicator.classList.add('bg-secondary');
-                    else if (i === 2) indicator.classList.add('bg-accent');
-                } else {
-                    btn.classList.add('text-gray-500');
-                    indicator.classList.remove('w-full');
-                    
-                    // 移除颜色
-                    if (i === 0) indicator.classList.remove('bg-primary');
-                    else if (i === 1) indicator.classList.remove('bg-secondary');
-                    else if (i === 2) indicator.classList.remove('bg-accent');
-                }
-            });
-        }
-
-        // 地点选择事件
-        locationSelect.addEventListener('change', () => {
-            if (locationSelect.value === '其他') {
-                otherLocationContainer.classList.remove('hidden');
-            } else {
-                otherLocationContainer.classList.add('hidden');
-            }
-        });
-
-        // 表单提交事件
-        recordForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            const location = locationSelect.value === '其他' 
-                ? otherLocationInput.value.trim() || '其他'
-                : locationSelect.value;
-            const notes = notesInput.value.trim();
-            
-            // 创建新记录
-            const newRecord = {
-                id: Date.now(),
-                timestamp: new Date().toISOString(),
-                location,
-                notes
-            };
-            
-            // 添加到记录列表
-            records.unshift(newRecord);
-            
-            // 保存到本地存储
-            saveRecords();
-            
-            // 重置表单
-            recordForm.reset();
-            otherLocationContainer.classList.add('hidden');
-            
-            // 更新UI
-            renderRecords();
-            updateStatistics();
-            updateChart();
-            
-            // 显示成功动画
-            const submitBtn = recordForm.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i class="fa fa-check mr-2"></i> 成功！';
-            submitBtn.classList.add('bg-green-500');
-            
-            setTimeout(() => {
-                submitBtn.innerHTML = originalText;
-                submitBtn.classList.remove('bg-green-500');
-            }, 1500);
-        });
-
-        // 筛选按钮点击事件
-        filterBtn.addEventListener('click', () => {
-            filterContainer.classList.toggle('hidden');
-        });
-
-        // 应用筛选按钮点击事件
-        applyFilterBtn.addEventListener('click', () => {
-            renderRecords();
-            filterContainer.classList.add('hidden');
-        });
-
-        // 重置筛选按钮点击事件
-        resetFilterBtn.addEventListener('click', () => {
-            startDateInput.value = '';
-            endDateInput.value = '';
-            renderRecords();
-        });
-
-        // 导出按钮点击事件
-        exportBtn.addEventListener('click', () => {
-            if (records.length === 0) {
-                alert('没有记录可导出');
-                return;
-            }
-            
-            const dataStr = JSON.stringify(records, null, 2);
-            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-            
-            const exportFileDefaultName = `poop_records_${new Date().toISOString().split('T')[0]}.json`;
-            
-            const linkElement = document.createElement('a');
-            linkElement.setAttribute('href', dataUri);
-            linkElement.setAttribute('download', exportFileDefaultName);
-            linkElement.click();
-        });
-
-        // 导入按钮点击事件
-        importBtn.addEventListener('click', () => {
-            importFileInput.click();
-        });
-
-        // 导入文件变化事件
-        importFileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const importedRecords = JSON.parse(event.target.result);
-                    
-                    // 验证导入的数据格式
-                    if (!Array.isArray(importedRecords)) {
-                        throw new Error('导入的数据格式不正确');
-                    }
-                    
-                    // 合并记录（避免重复）
-                    const existingIds = new Set(records.map(record => record.id));
-                    const newRecords = importedRecords.filter(record => !existingIds.has(record.id));
-                    
-                    if (newRecords.length === 0) {
-                        alert('没有导入新的记录');
-                        return;
-                    }
-                    
-                    records = [...newRecords, ...records];
-                    saveRecords();
-                    
-                    // 更新UI
-                    renderRecords();
-                    updateStatistics();
-                    updateChart();
-                    
-                    // 显示导入成功提示
-                    showImportSuccessToast();
-                    
-                } catch (error) {
-                    alert('导入失败：' + error.message);
-                } finally {
-                    // 重置文件输入
-                    importFileInput.value = '';
-                }
-            };
-            reader.readAsText(file);
-        });
-
-        // 取消删除按钮点击事件
-        cancelDeleteBtn.addEventListener('click', () => {
-            deleteModal.classList.add('hidden');
-            currentRecordId = null;
-        });
-
-        // 确认删除按钮点击事件
-        confirmDeleteBtn.addEventListener('click', () => {
-            if (currentRecordId !== null) {
-                records = records.filter(record => record.id !== currentRecordId);
-                saveRecords();
-                
-                // 更新UI
-                renderRecords();
-                updateStatistics();
-                updateChart();
-                
-                // 关闭模态框
-                deleteModal.classList.add('hidden');
-                currentRecordId = null;
-            }
-        });
-
-        // 渲染记录列表
-        function renderRecords() {
-            // 获取筛选日期
-            const startDate = startDateInput.value ? new Date(startDateInput.value) : null;
-            const endDate = endDateInput.value ? new Date(endDateInput.value) : null;
-            
-            // 筛选记录
-            let filteredRecords = records;
-            if (startDate || endDate) {
-                filteredRecords = records.filter(record => {
-                    const recordDate = new Date(record.timestamp);
-                    recordDate.setHours(0, 0, 0, 0);
-                    
-                    const matchesStart = !startDate || recordDate >= startDate;
-                    const matchesEnd = !endDate || recordDate <= endDate;
-                    
-                    return matchesStart && matchesEnd;
-                });
-            }
-            
-            // 清空列表
-            recordsList.innerHTML = '';
-            
-            // 显示空状态或记录
-            if (filteredRecords.length === 0) {
-                emptyState.classList.remove('hidden');
-                recordsList.appendChild(emptyState);
-            } else {
-                emptyState.classList.add('hidden');
-                
-                // 添加记录到列表
-                filteredRecords.forEach(record => {
-                    const recordElement = createRecordElement(record);
-                    recordsList.appendChild(recordElement);
-                });
-            }
-        }
-
-        // 创建记录元素
-        function createRecordElement(record) {
-            const recordDate = new Date(record.timestamp);
-            const formattedDate = formatDate(recordDate);
-            const formattedTime = formatTime(recordDate);
-            
-            const recordElement = document.createElement('div');
-            recordElement.className = 'record-item';
-            recordElement.innerHTML = `
-                <div class="flex justify-between items-start">
-                    <div>
-                        <div class="flex items-center">
-                            <span class="font-bold text-neutral-dark text-lg">${formattedDate}</span>
-                            <span class="text-gray-500 ml-2 text-base">${formattedTime}</span>
-                        </div>
-                        <div class="mt-2 flex items-center">
-                            <i class="fa fa-map-marker text-secondary mr-2 text-lg"></i>
-                            <span class="text-lg">${record.location}</span>
-                        </div>
-                        ${record.notes ? `
-                            <div class="mt-2 flex items-start">
-                                <i class="fa fa-comment text-gray-400 mr-2 mt-1 text-lg"></i>
-                                <span class="text-gray-600 text-base">${record.notes}</span>
-                            </div>
-                        ` : ''}
+    <!-- 设置模态框 -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
+            <h3 class="text-xl font-bold text-neutral-dark mb-4">设置</h3>
+            <div class="space-y-6">
+                <!-- 主题设置 -->
+                <div>
+                    <h4 class="text-lg font-semibold text-neutral-dark mb-3">主题设置</h4>
+                    <div class="space-y-3">
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="radio" name="theme" value="light" class="form-radio text-primary" checked>
+                            <span class="text-base">浅色主题</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="radio" name="theme" value="dark" class="form-radio text-primary">
+                            <span class="text-base">深色主题</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="radio" name="theme" value="auto" class="form-radio text-primary">
+                            <span class="text-base">跟随系统</span>
+                        </label>
                     </div>
-                    <button class="delete-btn text-gray-400 hover:text-danger transition-colors" data-id="${record.id}">
-                        <i class="fa fa-trash text-xl"></i>
-                    </button>
                 </div>
-            `;
-            
-            // 添加删除按钮事件
-            const deleteBtn = recordElement.querySelector('.delete-btn');
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                currentRecordId = parseInt(e.currentTarget.dataset.id);
-                deleteModal.classList.remove('hidden');
-            });
-            
-            return recordElement;
-        }
 
-        // 保存记录到本地存储
-        function saveRecords() {
-            localStorage.setItem('poopRecords', JSON.stringify(records));
-        }
+                <!-- 通知设置 -->
+                <div>
+                    <h4 class="text-lg font-semibold text-neutral-dark mb-3">通知设置</h4>
+                    <div class="space-y-3">
+                        <label class="flex items-center justify-between cursor-pointer">
+                            <span class="text-base">添加记录成功通知</span>
+                            <input type="checkbox" id="notificationAdd" class="form-checkbox text-primary" checked>
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer">
+                            <span class="text-base">删除记录成功通知</span>
+                            <input type="checkbox" id="notificationDelete" class="form-checkbox text-primary" checked>
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer">
+                            <span class="text-base">编辑记录成功通知</span>
+                            <input type="checkbox" id="notificationEdit" class="form-checkbox text-primary" checked>
+                        </label>
+                    </div>
+                </div>
 
-        // 更新统计信息
-        function updateStatistics() {
-            if (records.length === 0) {
-                avgIntervalElement.textContent = '--';
-                weeklyCountElement.textContent = '--';
-                commonLocationElement.textContent = '--';
-                return;
-            }
-            
-            // 计算平均间隔
-            if (records.length > 1) {
-                // 按时间排序
-                const sortedRecords = [...records].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-                
-                // 计算间隔
-                let totalInterval = 0;
-                for (let i = 1; i < sortedRecords.length; i++) {
-                    const prevTime = new Date(sortedRecords[i-1].timestamp).getTime();
-                    const currTime = new Date(sortedRecords[i].timestamp).getTime();
-                    totalInterval += (currTime - prevTime) / (1000 * 60 * 60); // 转换为小时
-                }
-                
-                const avgInterval = totalInterval / (sortedRecords.length - 1);
-                avgIntervalElement.textContent = avgInterval.toFixed(1);
-            } else {
-                avgIntervalElement.textContent = '--';
-            }
-            
-            // 计算本周次数
-            const today = new Date();
-            const weekStart = new Date(today);
-            weekStart.setDate(today.getDate() - today.getDay()); // 本周第一天（周日）
-            weekStart.setHours(0, 0, 0, 0);
-            
-            const weeklyRecords = records.filter(record => {
-                const recordDate = new Date(record.timestamp);
-                return recordDate >= weekStart;
-            });
-            
-            weeklyCountElement.textContent = weeklyRecords.length;
-            
-            // 计算常用地点
-            const locationCounts = {};
-            records.forEach(record => {
-                const location = record.location;
-                locationCounts[location] = (locationCounts[location] || 0) + 1;
-            });
-            
-            let maxCount = 0;
-            let commonLocation = '--';
-            
-            for (const location in locationCounts) {
-                if (locationCounts[location] > maxCount) {
-                    maxCount = locationCounts[location];
-                    commonLocation = location;
-                }
-            }
-            
-            commonLocationElement.textContent = commonLocation;
-        }
+                <!-- 数据管理 -->
+                <div>
+                    <h4 class="text-lg font-semibold text-neutral-dark mb-3">数据管理</h4>
+                    <div class="space-y-3">
+                        <button id="clearAllDataBtn" class="btn-danger w-full text-left px-4 py-2 rounded-lg">
+                            <i class="fa-solid fa-trash mr-2"></i> 清空所有数据
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" id="cancelSettingsBtn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                    取消
+                </button>
+                <button type="button" id="saveSettingsBtn" class="btn-primary">
+                    保存设置
+                </button>
+            </div>
+        </div>
+    </div>
 
-        // 初始化图表
-        function initChart() {
-            const ctx = document.getElementById('trendChart').getContext('2d');
-            
-            trendChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: '排便次数',
-                        data: [],
-                        backgroundColor: 'rgba(74, 222, 128, 0.2)',
-                        borderColor: 'rgba(74, 222, 128, 1)',
-                        borderWidth: 2,
-                        pointBackgroundColor: 'rgba(74, 222, 128, 1)',
-                        pointRadius: 4,
-                        tension: 0.3,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            callbacks: {
-                                title: function(tooltipItems) {
-                                    return tooltipItems[0].label;
-                                },
-                                label: function(context) {
-                                    return `排便次数: ${context.raw}`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 1
-                            }
-                        }
-                    }
-                }
-            });
-            
-            updateChart();
-        }
+    <!-- 通用提示组件 -->
+    <div id="toast" class="fixed bottom-4 right-4 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <div class="flex items-center">
+            <i id="toastIcon" class="mr-2"></i>
+            <span id="toastText"></span>
+        </div>
+    </div>
 
-        // 更新图表
-        function updateChart() {
-            if (records.length === 0) {
-                trendChart.data.labels = [];
-                trendChart.data.datasets[0].data = [];
-                trendChart.update();
-                return;
-            }
-            
-            // 获取过去14天的数据
-            const today = new Date();
-            const days = [];
-            const counts = [];
-            
-            // 初始化过去14天的数据
-            for (let i = 13; i >= 0; i--) {
-                const date = new Date(today);
-                date.setDate(today.getDate() - i);
-                date.setHours(0, 0, 0, 0);
-                
-                const dateStr = formatDateShort(date);
-                days.push(dateStr);
-                counts.push(0);
-            }
-            
-            // 统计每天的排便次数
-            records.forEach(record => {
-                const recordDate = new Date(record.timestamp);
-                recordDate.setHours(0, 0, 0, 0);
-                
-                const dayIndex = days.findIndex(day => {
-                    const dayDate = new Date(today);
-                    dayDate.setDate(today.getDate() - (13 - days.indexOf(day)));
-                    dayDate.setHours(0, 0, 0, 0);
-                    
-                    return dayDate.getTime() === recordDate.getTime();
-                });
-                
-                if (dayIndex !== -1) {
-                    counts[dayIndex]++;
-                }
-            });
-            
-            // 更新图表数据
-            trendChart.data.labels = days;
-            trendChart.data.datasets[0].data = counts;
-            trendChart.update();
-        }
-
-        // 显示导入成功提示
-        function showImportSuccessToast() {
-            importSuccessToast.classList.remove('translate-y-20', 'opacity-0');
-            
-            setTimeout(() => {
-                importSuccessToast.classList.add('translate-y-20', 'opacity-0');
-            }, 3000);
-        }
-
-        // 格式化日期（完整）
-        function formatDate(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            
-            return `${year}-${month}-${day}`;
-        }
-
-        // 格式化日期（简短）
-        function formatDateShort(date) {
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            
-            return `${month}-${day}`;
-        }
-
-        // 格式化时间
-        function formatTime(date) {
-            const hours = String(date.getHours()).padStart(2, '0');
-            const minutes = String(date.getMinutes()).padStart(2, '0');
-            
-            return `${hours}:${minutes}`;
-        }
-    </script>
+    <!-- 外部JavaScript文件 -->
+    <script src="script.js"></script>
 </body>
 </html>
