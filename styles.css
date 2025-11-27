@@ -8,6 +8,13 @@
     position: relative;
     width: 100%;
     height: calc(100vh - 12rem);
+    /* 针对小屏幕设备优化 */
+    @media (max-height: 600px) {
+        height: calc(100vh - 10rem);
+    }
+    @media (max-height: 500px) {
+        height: calc(100vh - 8rem);
+    }
 }
 
 .swipe-wrapper {
@@ -21,6 +28,8 @@
     height: 100%;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    /* 优化移动端滚动体验 */
+    scroll-behavior: smooth;
 }
 
 /* 自定义滚动条 */

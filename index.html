@@ -44,37 +44,40 @@
                 @apply shadow-lg hover:shadow-xl transition-shadow duration-300;
             }
             .btn-primary {
-                @apply bg-primary text-white px-6 py-4 rounded-full font-bold text-lg hover:bg-primary/90 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50;
+                @apply bg-primary text-white px-6 py-4 rounded-full font-bold text-base md:text-lg hover:bg-primary/90 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50 active:scale-95;
             }
             .btn-secondary {
-                @apply bg-secondary text-white px-6 py-4 rounded-full font-bold text-lg hover:bg-secondary/90 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-secondary/50;
+                @apply bg-secondary text-white px-6 py-4 rounded-full font-bold text-base md:text-lg hover:bg-secondary/90 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-secondary/50 active:scale-95;
             }
             .btn-accent {
-                @apply bg-accent text-white px-6 py-4 rounded-full font-bold text-lg hover:bg-accent/90 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-accent/50;
+                @apply bg-accent text-white px-6 py-4 rounded-full font-bold text-base md:text-lg hover:bg-accent/90 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-accent/50 active:scale-95;
             }
             .btn-danger {
-                @apply bg-danger text-white px-6 py-4 rounded-full font-bold text-lg hover:bg-danger/90 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-danger/50;
+                @apply bg-danger text-white px-6 py-4 rounded-full font-bold text-base md:text-lg hover:bg-danger/90 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-danger/50 active:scale-95;
             }
             .btn-sm {
-                @apply px-4 py-3 rounded-full font-bold text-base;
+                @apply px-4 py-3 rounded-full font-bold text-sm active:scale-95;
             }
             .input-field {
-                @apply w-full px-5 py-4 text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300;
+                @apply w-full px-5 py-4 text-base md:text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300;
             }
             .card {
                 @apply bg-white rounded-2xl p-5 card-shadow;
             }
             .section-title {
-                @apply text-xl md:text-2xl font-bold text-neutral-dark mb-4 flex items-center;
+                @apply text-lg md:text-xl font-bold text-neutral-dark mb-4 flex items-center;
             }
             .section-title i {
-                @apply mr-2 text-primary text-xl;
+                @apply mr-2 text-primary text-lg md:text-xl;
             }
             .record-item {
-                @apply bg-white border border-gray-200 rounded-xl p-4 hover:border-primary/50 transition-colors;
+                @apply bg-white border border-gray-200 rounded-xl p-5 hover:border-primary/50 transition-all duration-300 active:scale-[0.98];
             }
             .delete-btn {
-                @apply text-gray-400 hover:text-danger transition-colors p-2 rounded-full hover:bg-gray-100;
+                @apply text-gray-400 hover:text-danger transition-colors p-3 rounded-full hover:bg-gray-100 active:scale-95;
+            }
+            .edit-btn {
+                @apply text-gray-400 hover:text-primary transition-colors p-3 rounded-full hover:bg-gray-100 active:scale-95;
             }
             .tab-indicator {
                 @apply h-1 rounded-full transition-all duration-300;
@@ -96,19 +99,19 @@
         <!-- 标签页导航 -->
         <div class="flex justify-between items-center mb-4 px-2">
             <div class="flex-1 text-center">
-                <button class="tab-btn w-full py-3 text-lg font-medium relative" data-index="0">
+                <button class="tab-btn w-full py-4 text-base md:text-lg font-medium relative" data-index="0">
                     <i class="fa-solid fa-plus-circle mr-1"></i> 添加
                     <span class="tab-indicator absolute bottom-0 left-0 w-full bg-primary"></span>
                 </button>
             </div>
             <div class="flex-1 text-center">
-                <button class="tab-btn w-full py-3 text-lg font-medium relative text-gray-500" data-index="1">
+                <button class="tab-btn w-full py-4 text-base md:text-lg font-medium relative text-gray-500" data-index="1">
                     <i class="fa-solid fa-list-alt mr-1"></i> 历史
                     <span class="tab-indicator absolute bottom-0 left-0 w-0 bg-secondary"></span>
                 </button>
             </div>
             <div class="flex-1 text-center">
-                <button class="tab-btn w-full py-3 text-lg font-medium relative text-gray-500" data-index="2">
+                <button class="tab-btn w-full py-4 text-base md:text-lg font-medium relative text-gray-500" data-index="2">
                     <i class="fa-solid fa-chart-line mr-1"></i> 分析
                     <span class="tab-indicator absolute bottom-0 left-0 w-0 bg-accent"></span>
                 </button>
@@ -182,24 +185,24 @@
                             </div>
                             
                             <!-- 操作按钮 -->
-                            <div class="flex justify-between items-center">
+                            <div class="flex justify-between items-center mb-2">
                                 <h2 class="section-title mb-0">
                                     <i class="fa-solid fa-list-alt"></i> 历史记录
                                 </h2>
-                                <div class="flex space-x-2">
-                                    <button id="filterBtn" class="btn-secondary btn-sm">
+                                <div class="flex space-x-2 flex-wrap justify-end">
+                                    <button id="filterBtn" class="btn-secondary btn-sm py-3 px-3 text-sm">
                                         <i class="fa-solid fa-filter mr-1"></i> 筛选
                                     </button>
-                                    <button id="exportBtn" class="btn-accent btn-sm">
+                                    <button id="exportBtn" class="btn-accent btn-sm py-3 px-3 text-sm">
                                         <i class="fa-solid fa-download mr-1"></i> 导出
                                     </button>
-                                    <button id="importBtn" class="btn-secondary btn-sm">
+                                    <button id="importBtn" class="btn-secondary btn-sm py-3 px-3 text-sm">
                                     <i class="fa-solid fa-upload mr-1"></i> 导入
                                 </button>
-                                <button id="backupBtn" class="btn-secondary btn-sm">
+                                <button id="backupBtn" class="btn-secondary btn-sm py-3 px-3 text-sm">
                                     <i class="fa-solid fa-database mr-1"></i> 备份
                                 </button>
-                                <button id="settingsBtn" class="btn-secondary btn-sm">
+                                <button id="settingsBtn" class="btn-secondary btn-sm py-3 px-3 text-sm">
                                     <i class="fa-solid fa-cog mr-1"></i> 设置
                                 </button>
                                 <input type="file" id="importFile" accept=".json" class="hidden">
@@ -323,13 +326,13 @@
     <!-- 确认删除模态框 -->
     <div id="deleteModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
-            <h3 class="text-xl font-bold text-neutral-dark mb-4">确认删除</h3>
+            <h3 class="text-lg md:text-xl font-bold text-neutral-dark mb-4">确认删除</h3>
             <p class="text-gray-600 mb-4">您确定要删除这条记录吗？此操作无法撤销。</p>
             <div id="deleteRecordInfo" class="bg-gray-50 rounded-lg p-4 mb-6">
                 <!-- 被删除记录信息将通过JavaScript动态添加 -->
             </div>
             <div class="flex justify-end space-x-3">
-                <button id="cancelDeleteBtn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                <button id="cancelDeleteBtn" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors active:scale-95">
                     取消
                 </button>
                 <button id="confirmDeleteBtn" class="btn-danger">
@@ -340,16 +343,16 @@
     </div>
 
     <!-- 编辑记录模态框 -->
-    <div id="editModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
-            <h3 class="text-xl font-bold text-neutral-dark mb-4">编辑记录</h3>
+    <div id="editModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden overflow-y-auto">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 my-8">
+            <h3 class="text-lg md:text-xl font-bold text-neutral-dark mb-4">编辑记录</h3>
             <form id="editForm" class="space-y-5">
                 <div>
-                    <label for="editTime" class="block text-gray-700 mb-2 font-medium text-lg">时间</label>
+                    <label for="editTime" class="block text-gray-700 mb-2 font-medium text-base md:text-lg">时间</label>
                     <input type="datetime-local" id="editTime" class="input-field">
                 </div>
                 <div>
-                    <label for="editLocation" class="block text-gray-700 mb-2 font-medium text-lg">地点</label>
+                    <label for="editLocation" class="block text-gray-700 mb-2 font-medium text-base md:text-lg">地点</label>
                     <div class="flex">
                         <select id="editLocation" class="input-field">
                             <option value="家里">家里</option>
@@ -361,11 +364,11 @@
                     </div>
                 </div>
                 <div id="editOtherLocationContainer" class="hidden">
-                    <label for="editOtherLocation" class="block text-gray-700 mb-2 font-medium text-lg">其他地点</label>
+                    <label for="editOtherLocation" class="block text-gray-700 mb-2 font-medium text-base md:text-lg">其他地点</label>
                     <input type="text" id="editOtherLocation" class="input-field" placeholder="请输入地点">
                 </div>
                 <div>
-                    <label for="editType" class="block text-gray-700 mb-2 font-medium text-lg">类型 (可选)</label>
+                    <label for="editType" class="block text-gray-700 mb-2 font-medium text-base md:text-lg">类型 (可选)</label>
                     <select id="editType" class="input-field">
                         <option value="">请选择类型</option>
                         <option value="正常">正常</option>
@@ -375,11 +378,11 @@
                     </select>
                 </div>
                 <div>
-                    <label for="editNotes" class="block text-gray-700 mb-2 font-medium text-lg">备注 (可选)</label>
+                    <label for="editNotes" class="block text-gray-700 mb-2 font-medium text-base md:text-lg">备注 (可选)</label>
                     <textarea id="editNotes" class="input-field" rows="3" placeholder="添加备注信息"></textarea>
                 </div>
                 <div class="flex justify-end space-x-3">
-                    <button type="button" id="cancelEditBtn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                    <button type="button" id="cancelEditBtn" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors active:scale-95">
                         取消
                     </button>
                     <button type="submit" class="btn-primary">

@@ -312,6 +312,12 @@ function initSwipeEvents() {
  * @param {TouchEvent} e - 触摸事件对象
  */
 function handleTouchStart(e) {
+    // 只处理单点触摸
+    if (e.touches.length > 1) {
+        startX = null;
+        return;
+    }
+    
     startX = e.touches[0].clientX;
     isScrolling = false;
     swipeWrapper.style.transition = 'none';
@@ -322,19 +328,21 @@ function handleTouchStart(e) {
  * @param {TouchEvent} e - 触摸事件对象
  */
 function handleTouchMove(e) {
-    if (!startX) return;
+    if (!startX || e.touches.length > 1) return;
 
     const currentX = e.touches[0].clientX;
     const diffX = startX - currentX;
     
-    // 判断是否为滑动操作（移动距离超过10px）
-    if (Math.abs(diffX) > 10) {
+    // 判断是否为水平滑动
+    if (Math.abs(diffX) > 5) {
         isScrolling = true;
-        e.preventDefault();
         
         // 计算滑动距离，实时更新滑动容器位置
         const translateValue = -currentTabIndex * 100 + (diffX / swipeContainer.offsetWidth * 100);
         swipeWrapper.style.transform = `translateX(${translateValue}%)`;
+        
+        // 阻止默认行为，防止页面滚动
+        e.preventDefault();
     }
 }
 
@@ -344,15 +352,18 @@ function handleTouchMove(e) {
  */
 function handleTouchEnd(e) {
     if (!startX || !isScrolling) {
-        startX = 0;
+        startX = null;
         return;
     }
 
     const currentX = e.changedTouches[0].clientX;
     const diffX = startX - currentX;
+    const containerWidth = swipeContainer.offsetWidth;
     
-    // 判断是否切换标签（滑动距离超过容器宽度的20%）
-    if (Math.abs(diffX) > swipeContainer.offsetWidth * 0.2) {
+    // 判断是否切换标签（滑动距离超过容器宽度的15%或滑动速度超过阈值）
+    const swipeThreshold = containerWidth * 0.15;
+    
+    if (Math.abs(diffX) > swipeThreshold) {
         if (diffX > 0 && currentTabIndex < swipeCards.length - 1) {
             // 向右滑动，显示下一个标签
             switchTab(currentTabIndex + 1);
@@ -368,7 +379,7 @@ function handleTouchEnd(e) {
         switchTab(currentTabIndex);
     }
 
-    startX = 0;
+    startX = null;
     isScrolling = false;
 }
 
