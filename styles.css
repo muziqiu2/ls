@@ -56,3 +56,213 @@
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
 }
+
+/* 深色主题样式 */
+.dark .swipe-container {
+    background-color: #1f2937;
+}
+
+.dark .swipe-card {
+    background-color: #1f2937;
+}
+
+.dark .card {
+    background-color: #374151;
+}
+
+.dark .record-item {
+    background-color: #374151;
+    border-color: #4b5563;
+}
+
+.dark .record-item:hover {
+    border-color: #4ade80;
+}
+
+.dark .section-title {
+    color: #f9fafb;
+}
+
+.dark .input-field {
+    background-color: #4b5563;
+    border-color: #6b7280;
+    color: #f9fafb;
+}
+
+.dark .input-field::placeholder {
+    color: #9ca3af;
+}
+
+.dark .input-field:focus {
+    border-color: #4ade80;
+}
+
+.dark .btn-primary {
+    background-color: #4ade80;
+    color: #1f2937;
+}
+
+.dark .btn-secondary {
+    background-color: #60a5fa;
+    color: #1f2937;
+}
+
+.dark .btn-accent {
+    background-color: #fbbf24;
+    color: #1f2937;
+}
+
+.dark .btn-danger {
+    background-color: #ef4444;
+    color: #ffffff;
+}
+
+.dark .delete-btn {
+    color: #9ca3af;
+}
+
+.dark .delete-btn:hover {
+    color: #ef4444;
+    background-color: #4b5563;
+}
+
+.dark .edit-btn {
+    color: #9ca3af;
+}
+
+.dark .edit-btn:hover {
+    color: #4ade80;
+    background-color: #4b5563;
+}
+
+.dark .tab-btn {
+    color: #9ca3af;
+}
+
+.dark .tab-btn:not(.text-gray-500) {
+    color: #f9fafb;
+}
+
+.dark .text-gray-500 {
+    color: #9ca3af;
+}
+
+.dark .text-neutral-dark {
+    color: #f9fafb;
+}
+
+.dark .text-gray-600 {
+    color: #d1d5db;
+}
+
+.dark .text-gray-400 {
+    color: #9ca3af;
+}
+
+.dark .bg-neutral {
+    background-color: #4b5563;
+}
+
+.dark .bg-blue-50 {
+    background-color: #1e3a5f;
+}
+
+.dark .border-blue-100 {
+    border-color: #3b82f6;
+}
+
+.dark .text-blue-500 {
+    color: #60a5fa;
+}
+
+.dark .text-blue-700 {
+    color: #93c5fd;
+}
+
+.dark .text-blue-800 {
+    color: #bfdbfe;
+}
+
+.dark .hover\:bg-gray-300:hover {
+    background-color: #6b7280;
+}
+
+.dark .hover\:bg-gray-200:hover {
+    background-color: #4b5563;
+}
+
+.dark .bg-gray-200 {
+    background-color: #4b5563;
+    color: #f9fafb;
+}
+
+.dark .bg-gray-100 {
+    background-color: #374151;
+}
+
+.dark .border-gray-200 {
+    border-color: #4b5563;
+}
+
+.dark .border-gray-300 {
+    border-color: #6b7280;
+}
+
+.dark .toast {
+    background-color: #374151;
+    border: 1px solid #4b5563;
+}
+
+.dark #deleteModal,
+.dark #editModal,
+.dark #settingsModal,
+.dark #confirmModal,
+.dark #restoreModal {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.dark #deleteModal .bg-white,
+.dark #editModal .bg-white,
+.dark #settingsModal .bg-white,
+.dark #confirmModal .bg-white,
+.dark #restoreModal .bg-white {
+    background-color: #374151;
+}
+
+.dark #deleteRecordInfo {
+    background-color: #4b5563;
+}
+
+.dark #activeFilters {
+    background-color: #1e3a5f;
+    border-color: #3b82f6;
+}
+
+/* 深色主题滚动条 */
+.dark ::-webkit-scrollbar-track {
+    background: #374151;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: #6b7280;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+/* 深色主题select下拉菜单 */
+.dark select {
+    background-color: #4b5563;
+    color: #f9fafb;
+}
+
+/* 深色主题radio按钮 */
+.dark .form-radio {
+    accent-color: #4ade80;
+}
+
+/* 深色主题checkbox */
+.dark .form-checkbox {
+    accent-color: #4ade80;
+}
