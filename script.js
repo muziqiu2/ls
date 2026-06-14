@@ -458,7 +458,7 @@ function handleTouchMove(e) {
             dragOffset *= 0.3;
         }
 
-        swipeWrapper.style.transform = `translateX(${baseOffset - dragOffset}%)`;
+        swipeWrapper.style.transform = `translateX(${baseOffset + dragOffset}%)`;
 
         // 确认为水平滑动后才阻止默认行为，否则让页面照常可垂直滚动
         if (e.cancelable) e.preventDefault();
@@ -543,7 +543,7 @@ function handleMouseMove(e) {
     if (currentTabIndex === 0 && diffX > 0) dragOffset *= 0.3;
     else if (currentTabIndex === maxIndex && diffX < 0) dragOffset *= 0.3;
 
-    swipeWrapper.style.transform = `translateX(${baseOffset - dragOffset}%)`;
+    swipeWrapper.style.transform = `translateX(${baseOffset + dragOffset}%)`;
     // 防止桌面端选中文本
     if (e.preventDefault) e.preventDefault();
 }
