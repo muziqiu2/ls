@@ -15,10 +15,6 @@ let currentEditRecordId = null;
 let trendChart = null;
 // 当前选中的标签页索引
 let currentTabIndex = 0;
-// 滑动开始X坐标（用于触摸滑动）
-let startX = 0;
-// 是否正在滑动
-let isScrolling = false;
 
 // 异步加载记录数据
 async function loadRecords() {
