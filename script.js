@@ -332,11 +332,25 @@ function setDefaultDates() {
 }
 
 // ------------------------------------------
-// 滑动事件处理
+// 滑动事件处理（修复版）
 // ------------------------------------------
+/**
+ * 卡片偏移百分比（每张卡片占轨道的 1/3 = 33.3333%）
+ * 与 styles.css 中 .swipe-wrapper { width: 300% } 和 .swipe-card { flex: 0 0 33.3333% } 一致
+ */
+const SWIPE_CARD_PERCENT = 100 / 3; // ≈ 33.3333
+
+// 触摸/滑动状态变量
+let startX = 0;
+let startY = 0;
+let isSwipeActive = false;   // 是否已确认为水平滑动（用于防止滚动被拦截）
+let swipeDirectionLocked = null; // 'horizontal' | 'vertical' | null
+let swipeStartTimestamp = 0;
+
 /**
  * 初始化滑动事件
  * 绑定标签按钮点击事件、触摸事件和鼠标事件（用于测试）
+ * 同时添加窗口 resize 监听，确保滑动位置始终正确
  */
 function initSwipeEvents() {
     // 标签按钮点击事件
@@ -347,16 +361,30 @@ function initSwipeEvents() {
         });
     });
 
-    // 触摸事件 - 用于移动端滑动
-    swipeContainer.addEventListener('touchstart', handleTouchStart, false);
-    swipeContainer.addEventListener('touchmove', handleTouchMove, false);
-    swipeContainer.addEventListener('touchend', handleTouchEnd, false);
+    // 触摸事件 - 移动端滑动
+    swipeContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
+    swipeContainer.addEventListener('touchmove', handleTouchMove, { passive: false });
+    swipeContainer.addEventListener('touchend', handleTouchEnd, { passive: true });
+    swipeContainer.addEventListener('touchcancel', handleTouchEnd, { passive: true });
 
-    // 鼠标事件 - 用于桌面端测试
-    swipeContainer.addEventListener('mousedown', handleMouseDown, false);
-    swipeContainer.addEventListener('mousemove', handleMouseMove, false);
-    swipeContainer.addEventListener('mouseup', handleMouseUp, false);
-    swipeContainer.addEventListener('mouseleave', handleMouseUp, false);
+    // 鼠标事件 - 桌面端测试
+    swipeContainer.addEventListener('mousedown', handleMouseDown);
+    swipeContainer.addEventListener('mousemove', handleMouseMove);
+    swipeContainer.addEventListener('mouseup', handleMouseUp);
+    swipeContainer.addEventListener('mouseleave', handleMouseUp);
+
+    // 窗口尺寸变化时，校正位置防止错位
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            swipeWrapper.style.transition = 'none';
+            swipeWrapper.style.transform = `translateX(-${currentTabIndex * SWIPE_CARD_PERCENT}%)`;
+            // 触发回流后恢复 transition
+            void swipeWrapper.offsetWidth;
+            swipeWrapper.style.transition = '';
+        }, 150);
+    });
 }
 
 /**
@@ -365,168 +393,227 @@ function initSwipeEvents() {
  */
 function handleTouchStart(e) {
     // 只处理单点触摸
-    if (e.touches.length > 1) {
-        startX = null;
+    if (e.touches.length !== 1) {
+        isSwipeActive = false;
+        swipeDirectionLocked = null;
+        startX = 0;
+        startY = 0;
         return;
     }
-    
-    startX = e.touches[0].clientX;
-    isScrolling = false;
-    swipeWrapper.style.transition = 'none';
+
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+    swipeStartTimestamp = Date.now();
+    isSwipeActive = false;
+    swipeDirectionLocked = null;
+
+    // 先移除过渡动画，实时响应
+    swipeWrapper.classList.add('is-dragging');
 }
 
 /**
  * 处理触摸移动事件
+ * 关键修复：检测水平 vs 垂直方向；只有在确认为水平滑动时才阻止默认行为（保留垂直滚动）
  * @param {TouchEvent} e - 触摸事件对象
  */
 function handleTouchMove(e) {
-    if (!startX || e.touches.length > 1) return;
+    if (!startX || e.touches.length !== 1) return;
 
-    const currentX = e.touches[0].clientX;
-    const diffX = startX - currentX;
-    
-    // 判断是否为水平滑动
-    if (Math.abs(diffX) > 5) {
-        isScrolling = true;
-        
-        // 计算滑动距离，实时更新滑动容器位置
-        const translateValue = -currentTabIndex * 100 + (diffX / swipeContainer.offsetWidth * 100);
-        swipeWrapper.style.transform = `translateX(${translateValue}%)`;
-        
-        // 阻止默认行为，防止页面滚动
-        e.preventDefault();
+    const touch = e.touches[0];
+    const diffX = touch.clientX - startX; // 正值 = 向右拖动
+    const diffY = touch.clientY - startY;
+    const absX = Math.abs(diffX);
+    const absY = Math.abs(diffY);
+
+    // 方向尚未锁定时进行判断
+    if (!swipeDirectionLocked) {
+        if (absX > 10 || absY > 10) {
+            // 水平位移明显大于垂直位移 → 视为水平滑动
+            if (absX > absY * 1.2) {
+                swipeDirectionLocked = 'horizontal';
+                isSwipeActive = true;
+            } else {
+                // 否则视为垂直滚动，彻底放弃本次触摸的水平滑动处理
+                swipeDirectionLocked = 'vertical';
+                swipeWrapper.classList.remove('is-dragging');
+                return;
+            }
+        } else {
+            return; // 位移太小，继续观察
+        }
+    }
+
+    // 已被判定为垂直滚动 → 不做任何处理，交给浏览器正常滚动
+    if (swipeDirectionLocked === 'vertical') return;
+
+    // 水平滑动：实时更新位置 + 阻止默认行为（防止整页水平滚动）
+    if (swipeDirectionLocked === 'horizontal') {
+        const containerWidth = swipeContainer.offsetWidth;
+        // 边缘阻尼（第一张卡片不能左滑，最后一张不能右滑）
+        let dragOffset = (diffX / containerWidth) * SWIPE_CARD_PERCENT;
+        const baseOffset = -currentTabIndex * SWIPE_CARD_PERCENT;
+
+        // 边界阻尼效果
+        const maxIndex = swipeCards.length - 1;
+        if (currentTabIndex === 0 && diffX > 0) {
+            dragOffset *= 0.3;
+        } else if (currentTabIndex === maxIndex && diffX < 0) {
+            dragOffset *= 0.3;
+        }
+
+        swipeWrapper.style.transform = `translateX(${baseOffset - dragOffset}%)`;
+
+        // 确认为水平滑动后才阻止默认行为，否则让页面照常可垂直滚动
+        if (e.cancelable) e.preventDefault();
     }
 }
 
 /**
- * 处理触摸结束事件
+ * 处理触摸结束/取消事件
  * @param {TouchEvent} e - 触摸事件对象
  */
 function handleTouchEnd(e) {
-    if (!startX || !isScrolling) {
-        startX = null;
+    // 如果没进入水平滑动流程，直接复位
+    if (!isSwipeActive || swipeDirectionLocked !== 'horizontal') {
+        swipeWrapper.classList.remove('is-dragging');
+        isSwipeActive = false;
+        swipeDirectionLocked = null;
+        startX = 0;
+        startY = 0;
         return;
     }
 
-    const currentX = e.changedTouches[0].clientX;
-    const diffX = startX - currentX;
+    const touch = e.changedTouches[0];
+    const diffX = touch.clientX - startX;  // 负值 = 向左滑（下一页）
     const containerWidth = swipeContainer.offsetWidth;
-    
-    // 判断是否切换标签（滑动距离超过容器宽度的15%或滑动速度超过阈值）
-    const swipeThreshold = containerWidth * 0.15;
-    
-    if (Math.abs(diffX) > swipeThreshold) {
-        if (diffX > 0 && currentTabIndex < swipeCards.length - 1) {
-            // 向右滑动，显示下一个标签
-            switchTab(currentTabIndex + 1);
-        } else if (diffX < 0 && currentTabIndex > 0) {
-            // 向左滑动，显示上一个标签
-            switchTab(currentTabIndex - 1);
-        } else {
-            // 滑动距离不足，恢复原位
-            switchTab(currentTabIndex);
-        }
-    } else {
-        // 滑动距离不足，恢复原位
-        switchTab(currentTabIndex);
+    const elapsed = Date.now() - swipeStartTimestamp;
+    const velocity = Math.abs(diffX) / elapsed; // px/ms
+
+    // 判定切换：位移 > 容器宽度 18%，或快速甩动（速度 > 0.4px/ms）
+    const threshold = Math.min(containerWidth * 0.18, 120);
+    let targetIndex = currentTabIndex;
+
+    // 向左拖动 diffX < 0 → 下一页
+    if (diffX < -threshold || (diffX < -30 && velocity > 0.4)) {
+        targetIndex = Math.min(currentTabIndex + 1, swipeCards.length - 1);
+    }
+    // 向右拖动 diffX > 0 → 上一页
+    else if (diffX > threshold || (diffX > 30 && velocity > 0.4)) {
+        targetIndex = Math.max(currentTabIndex - 1, 0);
     }
 
-    startX = null;
-    isScrolling = false;
+    swipeWrapper.classList.remove('is-dragging');
+    switchTab(targetIndex);
+
+    isSwipeActive = false;
+    swipeDirectionLocked = null;
+    startX = 0;
+    startY = 0;
 }
 
 /**
- * 处理鼠标按下事件（用于测试）
+ * 处理鼠标按下事件（桌面端测试）
  * @param {MouseEvent} e - 鼠标事件对象
  */
 function handleMouseDown(e) {
     startX = e.clientX;
-    isScrolling = false;
-    swipeWrapper.style.transition = 'none';
+    startY = e.clientY;
+    swipeStartTimestamp = Date.now();
+    isSwipeActive = false;
+    swipeDirectionLocked = 'horizontal'; // 桌面端默认水平滑动
+    swipeWrapper.classList.add('is-dragging');
     swipeContainer.style.cursor = 'grabbing';
 }
 
 /**
- * 处理鼠标移动事件（用于测试）
+ * 处理鼠标移动事件（桌面端测试）
  * @param {MouseEvent} e - 鼠标事件对象
  */
 function handleMouseMove(e) {
-    if (!startX) return;
+    if (!startX || swipeDirectionLocked !== 'horizontal') return;
 
-    const currentX = e.clientX;
-    const diffX = startX - currentX;
-    
-    // 判断是否为滑动操作（移动距离超过10px）
-    if (Math.abs(diffX) > 10) {
-        isScrolling = true;
-        
-        // 计算滑动距离，实时更新滑动容器位置
-        const translateValue = -currentTabIndex * 100 + (diffX / swipeContainer.offsetWidth * 100);
-        swipeWrapper.style.transform = `translateX(${translateValue}%)`;
-    }
+    const diffX = e.clientX - startX;
+    const absX = Math.abs(diffX);
+    if (absX < 5) return;
+
+    isSwipeActive = true;
+    const containerWidth = swipeContainer.offsetWidth;
+    let dragOffset = (diffX / containerWidth) * SWIPE_CARD_PERCENT;
+    const baseOffset = -currentTabIndex * SWIPE_CARD_PERCENT;
+
+    // 边界阻尼
+    const maxIndex = swipeCards.length - 1;
+    if (currentTabIndex === 0 && diffX > 0) dragOffset *= 0.3;
+    else if (currentTabIndex === maxIndex && diffX < 0) dragOffset *= 0.3;
+
+    swipeWrapper.style.transform = `translateX(${baseOffset - dragOffset}%)`;
+    // 防止桌面端选中文本
+    if (e.preventDefault) e.preventDefault();
 }
 
 /**
- * 处理鼠标释放事件（用于测试）
+ * 处理鼠标释放事件（桌面端测试）
  * @param {MouseEvent} e - 鼠标事件对象
  */
 function handleMouseUp(e) {
-    if (!startX || !isScrolling) {
+    swipeContainer.style.cursor = 'grab';
+
+    if (!isSwipeActive) {
+        swipeWrapper.classList.remove('is-dragging');
+        isSwipeActive = false;
+        swipeDirectionLocked = null;
         startX = 0;
-        swipeContainer.style.cursor = 'grab';
+        startY = 0;
         return;
     }
 
-    const currentX = e.clientX;
-    const diffX = startX - currentX;
-    
-    // 判断是否切换标签（滑动距离超过容器宽度的20%）
-    if (Math.abs(diffX) > swipeContainer.offsetWidth * 0.2) {
-        if (diffX > 0 && currentTabIndex < swipeCards.length - 1) {
-            // 向右滑动，显示下一个标签
-            switchTab(currentTabIndex + 1);
-        } else if (diffX < 0 && currentTabIndex > 0) {
-            // 向左滑动，显示上一个标签
-            switchTab(currentTabIndex - 1);
-        } else {
-            // 滑动距离不足，恢复原位
-            switchTab(currentTabIndex);
-        }
-    } else {
-        // 滑动距离不足，恢复原位
-        switchTab(currentTabIndex);
-    }
+    const diffX = e.clientX - startX;
+    const containerWidth = swipeContainer.offsetWidth;
+    const threshold = Math.min(containerWidth * 0.2, 120);
+    let targetIndex = currentTabIndex;
 
+    if (diffX < -threshold) targetIndex = Math.min(currentTabIndex + 1, swipeCards.length - 1);
+    else if (diffX > threshold) targetIndex = Math.max(currentTabIndex - 1, 0);
+
+    swipeWrapper.classList.remove('is-dragging');
+    switchTab(targetIndex);
+
+    isSwipeActive = false;
+    swipeDirectionLocked = null;
     startX = 0;
-    isScrolling = false;
-    swipeContainer.style.cursor = 'grab';
+    startY = 0;
 }
 
 /**
  * 切换标签页
+ * 核心修正：使用 SWIPE_CARD_PERCENT (≈33.33%) 作为每张卡片的步进百分比，
+ * 匹配 .swipe-wrapper { width: 300% } 与 .swipe-card { flex: 0 0 33.3333% }
  * @param {number} index - 目标标签页索引
  */
 function switchTab(index) {
     if (index < 0 || index >= swipeCards.length) return;
-    
+
     currentTabIndex = index;
-    
-    // 更新滑动容器位置
-    swipeWrapper.style.transition = 'transform 0.3s ease';
-    swipeWrapper.style.transform = `translateX(-${index * 100}%)`;
-    
+
+    // 使用弹性回弹过渡
+    swipeWrapper.classList.remove('is-dragging');
+    swipeWrapper.classList.add('snap-back');
+    swipeWrapper.style.transform = `translateX(-${index * SWIPE_CARD_PERCENT}%)`;
+
+    // 动画结束后清理 snap-back 类
+    setTimeout(() => {
+        swipeWrapper.classList.remove('snap-back');
+    }, 400);
+
     // 更新标签按钮样式和指示器
     tabBtns.forEach((btn, i) => {
         const indicator = btn.querySelector('.tab-indicator');
-        
-        // 先移除所有可能的颜色类
         indicator.classList.remove('bg-primary', 'bg-secondary', 'bg-accent');
-        
+
         if (i === index) {
             btn.classList.remove('text-gray-500');
             indicator.classList.add('w-full');
-            
-            // 设置对应颜色
             if (i === 0) indicator.classList.add('bg-primary');
             else if (i === 1) indicator.classList.add('bg-secondary');
             else if (i === 2) indicator.classList.add('bg-accent');
