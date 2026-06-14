@@ -7,23 +7,6 @@
 // ------------------------------------------
 // 记录列表，从本地存储加载或初始化为空数组
 let records = [];
-try {
-    const encryptedRecords = localStorage.getItem('poopRecords');
-    if (encryptedRecords) {
-        // 尝试解密数据
-        const decryptedRecords = decrypt(encryptedRecords);
-        records = JSON.parse(decryptedRecords);
-    }
-} catch (error) {
-    // 如果解密失败，可能是旧版本未加密的数据，尝试直接解析
-    try {
-        records = JSON.parse(localStorage.getItem('poopRecords')) || [];
-        // 将旧数据转换为加密格式
-        saveRecords();
-    } catch (e) {
-        records = [];
-    }
-}
 // 当前选中的记录ID（用于删除操作）
 let currentRecordId = null;
 // 当前编辑的记录ID
@@ -32,10 +15,24 @@ let currentEditRecordId = null;
 let trendChart = null;
 // 当前选中的标签页索引
 let currentTabIndex = 0;
-// 滑动开始X坐标（用于触摸滑动）
-let startX = 0;
-// 是否正在滑动
-let isScrolling = false;
+
+// 异步加载记录数据
+async function loadRecords() {
+    try {
+        const encryptedRecords = localStorage.getItem('poopRecords');
+        if (encryptedRecords) {
+            const decryptedRecords = await decrypt(encryptedRecords);
+            records = JSON.parse(decryptedRecords);
+        }
+    } catch (error) {
+        try {
+            records = JSON.parse(localStorage.getItem('poopRecords')) || [];
+            await saveRecords();
+        } catch (e) {
+            records = [];
+        }
+    }
+}
 
 // ------------------------------------------
 // DOM元素引用
@@ -65,6 +62,12 @@ let settingsBtn, settingsModal, themeRadios, notificationAdd, notificationDelete
 let clearAllDataBtn, saveSettingsBtn, cancelSettingsBtn;
 // 图表设置相关元素
 let chartTypeSelect, timeRangeSelect;
+// 备份恢复相关元素
+let restoreBtn, restoreModal, backupsList, emptyBackupsState, cancelRestoreBtn;
+// 通用确认模态框相关元素
+let confirmModal, confirmTitle, confirmMessage, confirmIcon, confirmCancelBtn, confirmOkBtn;
+// 确认回调函数
+let confirmCallback = null;
 
 // ------------------------------------------
 // 初始化函数
@@ -73,7 +76,10 @@ let chartTypeSelect, timeRangeSelect;
  * 应用初始化函数，在页面加载完成后调用
  * 负责初始化DOM元素、绑定事件、初始化UI等
  */
-function init() {
+async function init() {
+    // 先加载记录数据
+    await loadRecords();
+    
     // 初始化DOM元素引用
     initDOM();
     
@@ -84,7 +90,7 @@ function init() {
     bindEvents();
     
     // 加载用户设置
-    loadSettings();
+    await loadSettings();
     
     // 初始化UI组件
     renderRecords();        // 渲染记录列表
@@ -182,6 +188,21 @@ function initDOM() {
     // 图表设置相关元素
     chartTypeSelect = document.getElementById('chartType');
     timeRangeSelect = document.getElementById('timeRange');
+    
+    // 备份恢复相关元素
+    restoreBtn = document.getElementById('restoreBtn');
+    restoreModal = document.getElementById('restoreModal');
+    backupsList = document.getElementById('backupsList');
+    emptyBackupsState = document.getElementById('emptyBackupsState');
+    cancelRestoreBtn = document.getElementById('cancelRestoreBtn');
+    
+    // 通用确认模态框相关元素
+    confirmModal = document.getElementById('confirmModal');
+    confirmTitle = document.getElementById('confirmTitle');
+    confirmMessage = document.getElementById('confirmMessage');
+    confirmIcon = document.getElementById('confirmIcon');
+    confirmCancelBtn = document.getElementById('confirmCancelBtn');
+    confirmOkBtn = document.getElementById('confirmOkBtn');
 }
 
 // ------------------------------------------
@@ -233,11 +254,17 @@ function bindEvents() {
     // 确认删除按钮点击事件 - 删除选中记录
     confirmDeleteBtn.addEventListener('click', confirmDelete);
     
+    // 点击删除模态框遮罩层关闭模态框
+    deleteModal.addEventListener('click', handleModalOverlayClick);
+    
     // 编辑表单提交事件 - 保存编辑后的记录
     editForm.addEventListener('submit', handleEditSubmit);
     
     // 取消编辑按钮点击事件 - 关闭编辑模态框
     cancelEditBtn.addEventListener('click', cancelEdit);
+    
+    // 点击编辑模态框遮罩层关闭模态框
+    editModal.addEventListener('click', handleModalOverlayClick);
     
     // 编辑地点选择事件 - 显示/隐藏编辑时的其他地点输入框
     editLocation.addEventListener('change', handleEditLocationChange);
@@ -251,6 +278,9 @@ function bindEvents() {
     // 取消设置按钮点击事件 - 关闭设置模态框
     cancelSettingsBtn.addEventListener('click', closeSettingsModal);
     
+    // 点击设置模态框遮罩层关闭模态框
+    settingsModal.addEventListener('click', handleModalOverlayClick);
+    
     // 清空所有数据按钮点击事件 - 清空所有记录
     clearAllDataBtn.addEventListener('click', clearAllData);
     
@@ -259,6 +289,24 @@ function bindEvents() {
     
     // 时间范围选择事件 - 切换时间范围
     timeRangeSelect.addEventListener('change', updateChart);
+    
+    // 恢复按钮点击事件 - 打开备份恢复模态框
+    restoreBtn.addEventListener('click', openRestoreModal);
+    
+    // 取消恢复按钮点击事件 - 关闭备份恢复模态框
+    cancelRestoreBtn.addEventListener('click', closeRestoreModal);
+    
+    // 点击恢复模态框遮罩层关闭模态框
+    restoreModal.addEventListener('click', handleModalOverlayClick);
+    
+    // 确认模态框取消按钮点击事件
+    confirmCancelBtn.addEventListener('click', closeConfirmModal);
+    
+    // 确认模态框确认按钮点击事件
+    confirmOkBtn.addEventListener('click', handleConfirmOk);
+    
+    // 点击确认模态框遮罩层关闭模态框
+    confirmModal.addEventListener('click', handleModalOverlayClick);
 }
 
 // ------------------------------------------
@@ -280,11 +328,25 @@ function setDefaultDates() {
 }
 
 // ------------------------------------------
-// 滑动事件处理
+// 滑动事件处理（修复版）
 // ------------------------------------------
+/**
+ * 卡片偏移百分比（每张卡片占轨道的 1/3 = 33.3333%）
+ * 与 styles.css 中 .swipe-wrapper { width: 300% } 和 .swipe-card { flex: 0 0 33.3333% } 一致
+ */
+const SWIPE_CARD_PERCENT = 100 / 3; // ≈ 33.3333
+
+// 触摸/滑动状态变量
+let startX = 0;
+let startY = 0;
+let isSwipeActive = false;   // 是否已确认为水平滑动（用于防止滚动被拦截）
+let swipeDirectionLocked = null; // 'horizontal' | 'vertical' | null
+let swipeStartTimestamp = 0;
+
 /**
  * 初始化滑动事件
  * 绑定标签按钮点击事件、触摸事件和鼠标事件（用于测试）
+ * 同时添加窗口 resize 监听，确保滑动位置始终正确
  */
 function initSwipeEvents() {
     // 标签按钮点击事件
@@ -295,16 +357,30 @@ function initSwipeEvents() {
         });
     });
 
-    // 触摸事件 - 用于移动端滑动
-    swipeContainer.addEventListener('touchstart', handleTouchStart, false);
-    swipeContainer.addEventListener('touchmove', handleTouchMove, false);
-    swipeContainer.addEventListener('touchend', handleTouchEnd, false);
+    // 触摸事件 - 移动端滑动
+    swipeContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
+    swipeContainer.addEventListener('touchmove', handleTouchMove, { passive: false });
+    swipeContainer.addEventListener('touchend', handleTouchEnd, { passive: true });
+    swipeContainer.addEventListener('touchcancel', handleTouchEnd, { passive: true });
 
-    // 鼠标事件 - 用于桌面端测试
-    swipeContainer.addEventListener('mousedown', handleMouseDown, false);
-    swipeContainer.addEventListener('mousemove', handleMouseMove, false);
-    swipeContainer.addEventListener('mouseup', handleMouseUp, false);
-    swipeContainer.addEventListener('mouseleave', handleMouseUp, false);
+    // 鼠标事件 - 桌面端测试
+    swipeContainer.addEventListener('mousedown', handleMouseDown);
+    swipeContainer.addEventListener('mousemove', handleMouseMove);
+    swipeContainer.addEventListener('mouseup', handleMouseUp);
+    swipeContainer.addEventListener('mouseleave', handleMouseUp);
+
+    // 窗口尺寸变化时，校正位置防止错位
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            swipeWrapper.style.transition = 'none';
+            swipeWrapper.style.transform = `translateX(-${currentTabIndex * SWIPE_CARD_PERCENT}%)`;
+            // 触发回流后恢复 transition
+            void swipeWrapper.offsetWidth;
+            swipeWrapper.style.transition = '';
+        }, 150);
+    });
 }
 
 /**
@@ -313,168 +389,227 @@ function initSwipeEvents() {
  */
 function handleTouchStart(e) {
     // 只处理单点触摸
-    if (e.touches.length > 1) {
-        startX = null;
+    if (e.touches.length !== 1) {
+        isSwipeActive = false;
+        swipeDirectionLocked = null;
+        startX = 0;
+        startY = 0;
         return;
     }
-    
-    startX = e.touches[0].clientX;
-    isScrolling = false;
-    swipeWrapper.style.transition = 'none';
+
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+    swipeStartTimestamp = Date.now();
+    isSwipeActive = false;
+    swipeDirectionLocked = null;
+
+    // 先移除过渡动画，实时响应
+    swipeWrapper.classList.add('is-dragging');
 }
 
 /**
  * 处理触摸移动事件
+ * 关键修复：检测水平 vs 垂直方向；只有在确认为水平滑动时才阻止默认行为（保留垂直滚动）
  * @param {TouchEvent} e - 触摸事件对象
  */
 function handleTouchMove(e) {
-    if (!startX || e.touches.length > 1) return;
+    if (!startX || e.touches.length !== 1) return;
 
-    const currentX = e.touches[0].clientX;
-    const diffX = startX - currentX;
-    
-    // 判断是否为水平滑动
-    if (Math.abs(diffX) > 5) {
-        isScrolling = true;
-        
-        // 计算滑动距离，实时更新滑动容器位置
-        const translateValue = -currentTabIndex * 100 + (diffX / swipeContainer.offsetWidth * 100);
-        swipeWrapper.style.transform = `translateX(${translateValue}%)`;
-        
-        // 阻止默认行为，防止页面滚动
-        e.preventDefault();
+    const touch = e.touches[0];
+    const diffX = touch.clientX - startX; // 正值 = 向右拖动
+    const diffY = touch.clientY - startY;
+    const absX = Math.abs(diffX);
+    const absY = Math.abs(diffY);
+
+    // 方向尚未锁定时进行判断
+    if (!swipeDirectionLocked) {
+        if (absX > 10 || absY > 10) {
+            // 水平位移明显大于垂直位移 → 视为水平滑动
+            if (absX > absY * 1.2) {
+                swipeDirectionLocked = 'horizontal';
+                isSwipeActive = true;
+            } else {
+                // 否则视为垂直滚动，彻底放弃本次触摸的水平滑动处理
+                swipeDirectionLocked = 'vertical';
+                swipeWrapper.classList.remove('is-dragging');
+                return;
+            }
+        } else {
+            return; // 位移太小，继续观察
+        }
+    }
+
+    // 已被判定为垂直滚动 → 不做任何处理，交给浏览器正常滚动
+    if (swipeDirectionLocked === 'vertical') return;
+
+    // 水平滑动：实时更新位置 + 阻止默认行为（防止整页水平滚动）
+    if (swipeDirectionLocked === 'horizontal') {
+        const containerWidth = swipeContainer.offsetWidth;
+        // 边缘阻尼（第一张卡片不能左滑，最后一张不能右滑）
+        let dragOffset = (diffX / containerWidth) * SWIPE_CARD_PERCENT;
+        const baseOffset = -currentTabIndex * SWIPE_CARD_PERCENT;
+
+        // 边界阻尼效果
+        const maxIndex = swipeCards.length - 1;
+        if (currentTabIndex === 0 && diffX > 0) {
+            dragOffset *= 0.3;
+        } else if (currentTabIndex === maxIndex && diffX < 0) {
+            dragOffset *= 0.3;
+        }
+
+        swipeWrapper.style.transform = `translateX(${baseOffset + dragOffset}%)`;
+
+        // 确认为水平滑动后才阻止默认行为，否则让页面照常可垂直滚动
+        if (e.cancelable) e.preventDefault();
     }
 }
 
 /**
- * 处理触摸结束事件
+ * 处理触摸结束/取消事件
  * @param {TouchEvent} e - 触摸事件对象
  */
 function handleTouchEnd(e) {
-    if (!startX || !isScrolling) {
-        startX = null;
+    // 如果没进入水平滑动流程，直接复位
+    if (!isSwipeActive || swipeDirectionLocked !== 'horizontal') {
+        swipeWrapper.classList.remove('is-dragging');
+        isSwipeActive = false;
+        swipeDirectionLocked = null;
+        startX = 0;
+        startY = 0;
         return;
     }
 
-    const currentX = e.changedTouches[0].clientX;
-    const diffX = startX - currentX;
+    const touch = e.changedTouches[0];
+    const diffX = touch.clientX - startX;  // 负值 = 向左滑（下一页）
     const containerWidth = swipeContainer.offsetWidth;
-    
-    // 判断是否切换标签（滑动距离超过容器宽度的15%或滑动速度超过阈值）
-    const swipeThreshold = containerWidth * 0.15;
-    
-    if (Math.abs(diffX) > swipeThreshold) {
-        if (diffX > 0 && currentTabIndex < swipeCards.length - 1) {
-            // 向右滑动，显示下一个标签
-            switchTab(currentTabIndex + 1);
-        } else if (diffX < 0 && currentTabIndex > 0) {
-            // 向左滑动，显示上一个标签
-            switchTab(currentTabIndex - 1);
-        } else {
-            // 滑动距离不足，恢复原位
-            switchTab(currentTabIndex);
-        }
-    } else {
-        // 滑动距离不足，恢复原位
-        switchTab(currentTabIndex);
+    const elapsed = Date.now() - swipeStartTimestamp;
+    const velocity = Math.abs(diffX) / elapsed; // px/ms
+
+    // 判定切换：位移 > 容器宽度 18%，或快速甩动（速度 > 0.4px/ms）
+    const threshold = Math.min(containerWidth * 0.18, 120);
+    let targetIndex = currentTabIndex;
+
+    // 向左拖动 diffX < 0 → 下一页
+    if (diffX < -threshold || (diffX < -30 && velocity > 0.4)) {
+        targetIndex = Math.min(currentTabIndex + 1, swipeCards.length - 1);
+    }
+    // 向右拖动 diffX > 0 → 上一页
+    else if (diffX > threshold || (diffX > 30 && velocity > 0.4)) {
+        targetIndex = Math.max(currentTabIndex - 1, 0);
     }
 
-    startX = null;
-    isScrolling = false;
+    swipeWrapper.classList.remove('is-dragging');
+    switchTab(targetIndex);
+
+    isSwipeActive = false;
+    swipeDirectionLocked = null;
+    startX = 0;
+    startY = 0;
 }
 
 /**
- * 处理鼠标按下事件（用于测试）
+ * 处理鼠标按下事件（桌面端测试）
  * @param {MouseEvent} e - 鼠标事件对象
  */
 function handleMouseDown(e) {
     startX = e.clientX;
-    isScrolling = false;
-    swipeWrapper.style.transition = 'none';
+    startY = e.clientY;
+    swipeStartTimestamp = Date.now();
+    isSwipeActive = false;
+    swipeDirectionLocked = 'horizontal'; // 桌面端默认水平滑动
+    swipeWrapper.classList.add('is-dragging');
     swipeContainer.style.cursor = 'grabbing';
 }
 
 /**
- * 处理鼠标移动事件（用于测试）
+ * 处理鼠标移动事件（桌面端测试）
  * @param {MouseEvent} e - 鼠标事件对象
  */
 function handleMouseMove(e) {
-    if (!startX) return;
+    if (!startX || swipeDirectionLocked !== 'horizontal') return;
 
-    const currentX = e.clientX;
-    const diffX = startX - currentX;
-    
-    // 判断是否为滑动操作（移动距离超过10px）
-    if (Math.abs(diffX) > 10) {
-        isScrolling = true;
-        
-        // 计算滑动距离，实时更新滑动容器位置
-        const translateValue = -currentTabIndex * 100 + (diffX / swipeContainer.offsetWidth * 100);
-        swipeWrapper.style.transform = `translateX(${translateValue}%)`;
-    }
+    const diffX = e.clientX - startX;
+    const absX = Math.abs(diffX);
+    if (absX < 5) return;
+
+    isSwipeActive = true;
+    const containerWidth = swipeContainer.offsetWidth;
+    let dragOffset = (diffX / containerWidth) * SWIPE_CARD_PERCENT;
+    const baseOffset = -currentTabIndex * SWIPE_CARD_PERCENT;
+
+    // 边界阻尼
+    const maxIndex = swipeCards.length - 1;
+    if (currentTabIndex === 0 && diffX > 0) dragOffset *= 0.3;
+    else if (currentTabIndex === maxIndex && diffX < 0) dragOffset *= 0.3;
+
+    swipeWrapper.style.transform = `translateX(${baseOffset + dragOffset}%)`;
+    // 防止桌面端选中文本
+    if (e.preventDefault) e.preventDefault();
 }
 
 /**
- * 处理鼠标释放事件（用于测试）
+ * 处理鼠标释放事件（桌面端测试）
  * @param {MouseEvent} e - 鼠标事件对象
  */
 function handleMouseUp(e) {
-    if (!startX || !isScrolling) {
+    swipeContainer.style.cursor = 'grab';
+
+    if (!isSwipeActive) {
+        swipeWrapper.classList.remove('is-dragging');
+        isSwipeActive = false;
+        swipeDirectionLocked = null;
         startX = 0;
-        swipeContainer.style.cursor = 'grab';
+        startY = 0;
         return;
     }
 
-    const currentX = e.clientX;
-    const diffX = startX - currentX;
-    
-    // 判断是否切换标签（滑动距离超过容器宽度的20%）
-    if (Math.abs(diffX) > swipeContainer.offsetWidth * 0.2) {
-        if (diffX > 0 && currentTabIndex < swipeCards.length - 1) {
-            // 向右滑动，显示下一个标签
-            switchTab(currentTabIndex + 1);
-        } else if (diffX < 0 && currentTabIndex > 0) {
-            // 向左滑动，显示上一个标签
-            switchTab(currentTabIndex - 1);
-        } else {
-            // 滑动距离不足，恢复原位
-            switchTab(currentTabIndex);
-        }
-    } else {
-        // 滑动距离不足，恢复原位
-        switchTab(currentTabIndex);
-    }
+    const diffX = e.clientX - startX;
+    const containerWidth = swipeContainer.offsetWidth;
+    const threshold = Math.min(containerWidth * 0.2, 120);
+    let targetIndex = currentTabIndex;
 
+    if (diffX < -threshold) targetIndex = Math.min(currentTabIndex + 1, swipeCards.length - 1);
+    else if (diffX > threshold) targetIndex = Math.max(currentTabIndex - 1, 0);
+
+    swipeWrapper.classList.remove('is-dragging');
+    switchTab(targetIndex);
+
+    isSwipeActive = false;
+    swipeDirectionLocked = null;
     startX = 0;
-    isScrolling = false;
-    swipeContainer.style.cursor = 'grab';
+    startY = 0;
 }
 
 /**
  * 切换标签页
+ * 核心修正：使用 SWIPE_CARD_PERCENT (≈33.33%) 作为每张卡片的步进百分比，
+ * 匹配 .swipe-wrapper { width: 300% } 与 .swipe-card { flex: 0 0 33.3333% }
  * @param {number} index - 目标标签页索引
  */
 function switchTab(index) {
     if (index < 0 || index >= swipeCards.length) return;
-    
+
     currentTabIndex = index;
-    
-    // 更新滑动容器位置
-    swipeWrapper.style.transition = 'transform 0.3s ease';
-    swipeWrapper.style.transform = `translateX(-${index * 100}%)`;
-    
+
+    // 使用弹性回弹过渡
+    swipeWrapper.classList.remove('is-dragging');
+    swipeWrapper.classList.add('snap-back');
+    swipeWrapper.style.transform = `translateX(-${index * SWIPE_CARD_PERCENT}%)`;
+
+    // 动画结束后清理 snap-back 类
+    setTimeout(() => {
+        swipeWrapper.classList.remove('snap-back');
+    }, 400);
+
     // 更新标签按钮样式和指示器
     tabBtns.forEach((btn, i) => {
         const indicator = btn.querySelector('.tab-indicator');
-        
-        // 先移除所有可能的颜色类
         indicator.classList.remove('bg-primary', 'bg-secondary', 'bg-accent');
-        
+
         if (i === index) {
             btn.classList.remove('text-gray-500');
             indicator.classList.add('w-full');
-            
-            // 设置对应颜色
             if (i === 0) indicator.classList.add('bg-primary');
             else if (i === 1) indicator.classList.add('bg-secondary');
             else if (i === 2) indicator.classList.add('bg-accent');
@@ -506,6 +641,13 @@ function handleLocationChange() {
  */
 function handleFormSubmit(e) {
     e.preventDefault();
+    
+    // 表单验证
+    const validationResult = validateForm();
+    if (!validationResult.isValid) {
+        showToast(validationResult.message, 'error');
+        return;
+    }
     
     // 获取表单数据
     const location = locationSelect.value === '其他' 
@@ -547,6 +689,59 @@ function handleFormSubmit(e) {
     
     // 显示成功动画
     showSuccessAnimation();
+}
+
+/**
+ * 表单验证函数
+ * 验证时间输入和地点输入是否有效
+ * @returns {Object} - 验证结果对象
+ */
+function validateForm() {
+    // 验证时间输入
+    if (recordTimeInput.value) {
+        const inputDate = new Date(recordTimeInput.value);
+        const now = new Date();
+        
+        // 检查时间是否有效
+        if (isNaN(inputDate.getTime())) {
+            return {
+                isValid: false,
+                message: '请输入有效的时间'
+            };
+        }
+        
+        // 检查时间是否在未来
+        if (inputDate > now) {
+            return {
+                isValid: false,
+                message: '时间不能设置为未来'
+            };
+        }
+    }
+    
+    // 验证地点输入
+    if (locationSelect.value === '其他') {
+        const otherLocation = otherLocationInput.value.trim();
+        if (!otherLocation) {
+            return {
+                isValid: false,
+                message: '请输入其他地点名称'
+            };
+        }
+        
+        // 检查地点长度
+        if (otherLocation.length > 50) {
+            return {
+                isValid: false,
+                message: '地点名称不能超过50个字符'
+            };
+        }
+    }
+    
+    return {
+        isValid: true,
+        message: ''
+    };
 }
 
 /**
@@ -820,13 +1015,13 @@ function handleImportFile(e) {
  * 创建自动备份
  * 在每次数据修改时自动创建备份
  */
-function createAutoBackup() {
+async function createAutoBackup() {
     // 获取现有备份（支持解密）
     let backups = [];
     try {
         const encryptedBackups = localStorage.getItem('poopBackups');
         if (encryptedBackups) {
-            const decryptedBackups = decrypt(encryptedBackups);
+            const decryptedBackups = await decrypt(encryptedBackups);
             backups = JSON.parse(decryptedBackups);
         }
     } catch (error) {
@@ -855,7 +1050,7 @@ function createAutoBackup() {
     
     // 序列化并加密备份数据
     const serializedBackups = JSON.stringify(backups);
-    const encryptedBackups = encrypt(serializedBackups);
+    const encryptedBackups = await encrypt(serializedBackups);
     
     // 保存备份
     localStorage.setItem('poopBackups', encryptedBackups);
@@ -871,17 +1066,211 @@ function createManualBackup() {
 }
 
 /**
+ * 打开备份恢复模态框
+ * 加载备份列表并显示模态框
+ */
+async function openRestoreModal() {
+    await loadBackups();
+    restoreModal.classList.remove('hidden');
+}
+
+/**
+ * 关闭备份恢复模态框
+ */
+function closeRestoreModal() {
+    restoreModal.classList.add('hidden');
+}
+
+/**
+ * 加载备份列表
+ * 从本地存储读取备份并显示在模态框中
+ */
+async function loadBackups() {
+    let backups = [];
+    try {
+        const encryptedBackups = localStorage.getItem('poopBackups');
+        if (encryptedBackups) {
+            const decryptedBackups = await decrypt(encryptedBackups);
+            backups = JSON.parse(decryptedBackups);
+        }
+    } catch (error) {
+        try {
+            backups = JSON.parse(localStorage.getItem('poopBackups')) || [];
+        } catch (e) {
+            backups = [];
+        }
+    }
+    
+    // 清空备份列表
+    backupsList.innerHTML = '';
+    
+    if (backups.length === 0) {
+        // 显示空状态
+        backupsList.appendChild(emptyBackupsState);
+        emptyBackupsState.classList.remove('hidden');
+    } else {
+        // 隐藏空状态
+        emptyBackupsState.classList.add('hidden');
+        
+        // 创建备份项
+        backups.forEach((backup) => {
+            const backupElement = document.createElement('div');
+            backupElement.className = 'record-item cursor-pointer';
+            backupElement.dataset.id = backup.id;
+            
+            const backupDate = new Date(backup.timestamp);
+            const formattedDate = formatDate(backupDate);
+            const formattedTime = formatTime(backupDate);
+            
+            backupElement.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="flex items-center">
+                            <span class="font-bold text-neutral-dark text-base">${formattedDate}</span>
+                            <span class="text-gray-500 ml-2 text-sm">${formattedTime}</span>
+                        </div>
+                        <div class="mt-1 text-gray-500 text-sm">
+                            <i class="fa-solid fa-file-text mr-1"></i>
+                            ${backup.records.length} 条记录
+                        </div>
+                    </div>
+                    <button class="btn-primary btn-sm">
+                        <i class="fa-solid fa-rotate-right mr-1"></i> 恢复
+                    </button>
+                </div>
+            `;
+            
+            // 添加恢复按钮点击事件
+            const restoreBtn = backupElement.querySelector('button');
+            restoreBtn.addEventListener('click', () => {
+                restoreFromBackup(backup);
+            });
+            
+            backupsList.appendChild(backupElement);
+        });
+    }
+}
+
+/**
+ * 从备份恢复数据
+ * @param {Object} backup - 备份对象
+ */
+function restoreFromBackup(backup) {
+    showConfirmModal({
+        title: '确认恢复',
+        message: `确定要恢复此备份吗？当前 ${records.length} 条记录将被替换为备份中的 ${backup.records.length} 条记录。`,
+        icon: 'fa-solid fa-rotate-right',
+        iconColor: '#3b82f6',
+        danger: false,
+        onConfirm: () => {
+            // 恢复记录
+            records = [...backup.records];
+            saveRecords();
+            
+            // 更新UI
+            renderRecords();
+            updateStatistics();
+            updateChart();
+            
+            // 关闭模态框
+            closeRestoreModal();
+            
+            // 显示成功提示
+            showToast(`成功恢复 ${backup.records.length} 条记录！`);
+        }
+    });
+}
+
+/**
  * 保存记录到本地存储
  * 将记录列表序列化并加密后保存到localStorage
  * 优化：添加自动备份功能
  */
-function saveRecords() {
+async function saveRecords() {
     // 序列化并加密数据
     const serializedRecords = JSON.stringify(records);
-    const encryptedRecords = encrypt(serializedRecords);
+    const encryptedRecords = await encrypt(serializedRecords);
     localStorage.setItem('poopRecords', encryptedRecords);
     // 创建自动备份
-    createAutoBackup();
+    await createAutoBackup();
+}
+
+/**
+ * 处理模态框遮罩层点击事件
+ * 点击遮罩层时关闭对应的模态框
+ * @param {Event} e - 点击事件对象
+ */
+function handleModalOverlayClick(e) {
+    if (e.target === e.currentTarget) {
+        e.currentTarget.classList.add('hidden');
+        // 重置相关状态
+        if (e.currentTarget === deleteModal) {
+            currentRecordId = null;
+        } else if (e.currentTarget === editModal) {
+            currentEditRecordId = null;
+        } else if (e.currentTarget === confirmModal) {
+            confirmCallback = null;
+        }
+    }
+}
+
+/**
+ * 显示通用确认模态框
+ * @param {Object} options - 确认对话框选项
+ * @param {string} options.title - 标题
+ * @param {string} options.message - 消息内容
+ * @param {string} options.icon - 图标类名（可选）
+ * @param {string} options.iconColor - 图标颜色（可选）
+ * @param {Function} options.onConfirm - 确认回调函数
+ */
+function showConfirmModal(options) {
+    confirmTitle.textContent = options.title || '确认操作';
+    confirmMessage.textContent = options.message || '';
+    
+    // 设置图标
+    if (options.icon) {
+        confirmIcon.className = options.icon;
+    } else {
+        confirmIcon.className = 'fa-solid fa-exclamation-triangle';
+    }
+    
+    // 设置图标颜色
+    if (options.iconColor) {
+        confirmIcon.style.color = options.iconColor;
+    } else {
+        confirmIcon.style.color = '#eab308'; // yellow-500
+    }
+    
+    // 设置确认按钮颜色
+    if (options.danger) {
+        confirmOkBtn.className = 'btn-danger';
+    } else {
+        confirmOkBtn.className = 'btn-primary';
+    }
+    
+    // 设置回调函数
+    confirmCallback = options.onConfirm || null;
+    
+    // 显示模态框
+    confirmModal.classList.remove('hidden');
+}
+
+/**
+ * 关闭通用确认模态框
+ */
+function closeConfirmModal() {
+    confirmModal.classList.add('hidden');
+    confirmCallback = null;
+}
+
+/**
+ * 处理确认按钮点击
+ */
+function handleConfirmOk() {
+    if (confirmCallback && typeof confirmCallback === 'function') {
+        confirmCallback();
+    }
+    closeConfirmModal();
 }
 
 // ------------------------------------------
@@ -1102,14 +1491,6 @@ function createRecordElement(record) {
     return recordElement;
 }
 
-/**
- * 保存记录到本地存储
- * 将记录列表序列化并保存到localStorage
- */
-function saveRecords() {
-    localStorage.setItem('poopRecords', JSON.stringify(records));
-}
-
 // ------------------------------------------
 // 统计信息更新
 // ------------------------------------------
@@ -1252,22 +1633,15 @@ function initChart() {
  * 更新图表
  * 根据选择的图表类型和时间范围动态生成图表数据
  */
-function updateChart() {
-    if (records.length === 0) {
-        // 没有记录时清空图表
-        trendChart.data.labels = [];
-        trendChart.data.datasets = [];
-        trendChart.update();
-        return;
-    }
-    
-    // 获取用户选择的图表类型和时间范围
-    const chartType = chartTypeSelect.value;
-    const timeRange = timeRangeSelect.value;
-    
-    // 根据时间范围确定开始日期
+/**
+ * 获取日期范围信息
+ * @returns {Object} - 包含today, startDate, labels的对象
+ */
+function getDateRangeInfo() {
     const today = new Date();
+    const timeRange = timeRangeSelect.value;
     let startDate = null;
+    const labels = [];
     
     if (timeRange !== 'all') {
         startDate = new Date(today);
@@ -1275,24 +1649,49 @@ function updateChart() {
         startDate.setHours(0, 0, 0, 0);
     }
     
-    // 过滤记录
-    const filteredRecords = startDate 
-        ? records.filter(record => new Date(record.timestamp) >= startDate)
-        : records;
+    // 生成日期标签
+    const currentDate = startDate ? new Date(startDate) : null;
+    while (currentDate && currentDate <= today) {
+        const dateStr = formatDateShort(currentDate);
+        labels.push(dateStr);
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
     
-    // 根据图表类型生成不同的数据格式
+    return { today, startDate, labels };
+}
+
+/**
+ * 根据时间范围过滤记录
+ * @param {Array} records - 记录数组
+ * @param {Date} startDate - 开始日期（可为null）
+ * @returns {Array} - 过滤后的记录数组
+ */
+function filterRecordsByDate(records, startDate) {
+    if (!startDate) {
+        return records;
+    }
+    return records.filter(record => new Date(record.timestamp) >= startDate);
+}
+
+function updateChart() {
+    if (records.length === 0) {
+        trendChart.data.labels = [];
+        trendChart.data.datasets = [];
+        trendChart.update();
+        return;
+    }
+    
+    const chartType = chartTypeSelect.value;
+    const { startDate } = getDateRangeInfo();
+    const filteredRecords = filterRecordsByDate(records, startDate);
+    
     if (chartType === 'line' || chartType === 'bar') {
-        // 生成折线图或柱状图数据
         generateLineBarChartData(filteredRecords, chartType);
     } else if (chartType === 'pie') {
-        // 生成饼图数据（按地点统计）
         generatePieChartData(filteredRecords);
     }
     
-    // 更新图表类型
     trendChart.config.type = chartType;
-    
-    // 更新图表
     trendChart.update();
 }
 
@@ -1302,35 +1701,32 @@ function updateChart() {
  * @param {string} chartType - 图表类型（line或bar）
  */
 function generateLineBarChartData(records, chartType) {
-    // 按日期分组统计
     const dateCounts = {};
-    const labels = [];
-    const counts = [];
+    const { today, startDate, labels } = getDateRangeInfo();
     
-    // 初始化日期范围
-    const today = new Date();
-    const timeRange = timeRangeSelect.value;
-    let startDate = null;
-    
-    if (timeRange !== 'all') {
-        startDate = new Date(today);
-        startDate.setDate(today.getDate() - parseInt(timeRange) + 1);
-        startDate.setHours(0, 0, 0, 0);
-    } else {
-        // 如果是全部记录，找到最早的记录日期
-        startDate = new Date(Math.min(...records.map(r => new Date(r.timestamp))));
-        startDate.setHours(0, 0, 0, 0);
+    // 确定实际的开始日期（如果是全部记录，使用最早的记录日期）
+    let actualStartDate = startDate;
+    if (!startDate && records.length > 0) {
+        actualStartDate = new Date(Math.min(...records.map(r => new Date(r.timestamp))));
+        actualStartDate.setHours(0, 0, 0, 0);
     }
     
-    // 生成日期标签和初始化计数
-    const currentDate = new Date(startDate);
-    while (currentDate <= today) {
-        const dateStr = formatDateShort(currentDate);
-        labels.push(dateStr);
-        dateCounts[dateStr] = 0;
-        
-        // 增加一天
-        currentDate.setDate(currentDate.getDate() + 1);
+    // 如果没有预先生成的标签（全部记录模式），生成标签
+    let chartLabels = labels;
+    if (!startDate) {
+        chartLabels = [];
+        const currentDate = new Date(actualStartDate);
+        while (currentDate <= today) {
+            const dateStr = formatDateShort(currentDate);
+            chartLabels.push(dateStr);
+            dateCounts[dateStr] = 0;
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+    } else {
+        // 初始化日期计数
+        chartLabels.forEach(dateStr => {
+            dateCounts[dateStr] = 0;
+        });
     }
     
     // 统计每天的排便次数
@@ -1343,12 +1739,10 @@ function generateLineBarChartData(records, chartType) {
     });
     
     // 转换为数组格式
-    for (const dateStr of labels) {
-        counts.push(dateCounts[dateStr]);
-    }
+    const counts = chartLabels.map(dateStr => dateCounts[dateStr] || 0);
     
     // 设置图表数据
-    trendChart.data.labels = labels;
+    trendChart.data.labels = chartLabels;
     trendChart.data.datasets = [{
         label: '排便次数',
         data: counts,
@@ -1366,7 +1760,6 @@ function generateLineBarChartData(records, chartType) {
         return `排便次数: ${context.raw}`;
     };
     
-    // 显示Y轴（折线图和柱状图需要）
     trendChart.options.scales = {
         x: {
             grid: {
@@ -1499,27 +1892,123 @@ function showToast(message, type = 'success') {
  * @param {string} text - 要加密的文本
  * @returns {string} - 加密后的文本
  */
-function encrypt(text) {
-    // 使用固定密钥进行加密
+/**
+ * 使用Web Crypto API进行加密
+ * @param {string} text - 要加密的文本
+ * @returns {Promise<string>} - 加密后的Base64字符串
+ */
+async function encrypt(text) {
+    try {
+        // 使用派生的密钥进行加密
+        const key = await getEncryptionKey();
+        const iv = crypto.getRandomValues(new Uint8Array(12)); // 12字节IV用于GCM
+        const encoder = new TextEncoder();
+        const data = encoder.encode(text);
+        
+        const encryptedData = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv: iv },
+            key,
+            data
+        );
+        
+        // 将IV和加密数据合并并转换为Base64
+        const combined = new Uint8Array(iv.length + encryptedData.byteLength);
+        combined.set(iv, 0);
+        combined.set(new Uint8Array(encryptedData), iv.length);
+        
+        return btoa(String.fromCharCode(...combined));
+    } catch (error) {
+        // 如果Web Crypto API不可用，回退到简单加密
+        console.warn('Web Crypto API不可用，使用回退加密方式');
+        return simpleEncrypt(text);
+    }
+}
+
+/**
+ * 使用Web Crypto API进行解密
+ * @param {string} encryptedText - 要解密的Base64字符串
+ * @returns {Promise<string>} - 解密后的文本
+ */
+async function decrypt(encryptedText) {
+    try {
+        // 尝试使用新的加密方式解密
+        const key = await getEncryptionKey();
+        const combined = new Uint8Array(atob(encryptedText).split('').map(char => char.charCodeAt(0)));
+        
+        // 提取IV（前12字节）和加密数据
+        const iv = combined.slice(0, 12);
+        const encryptedData = combined.slice(12);
+        
+        const decryptedData = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: iv },
+            key,
+            encryptedData
+        );
+        
+        const decoder = new TextDecoder();
+        return decoder.decode(decryptedData);
+    } catch (error) {
+        // 如果解密失败，尝试使用旧的解密方式（向后兼容）
+        console.warn('新解密方式失败，尝试旧方式:', error.message);
+        return simpleDecrypt(encryptedText);
+    }
+}
+
+/**
+ * 获取或生成加密密钥
+ * @returns {Promise<CryptoKey>} - AES密钥
+ */
+async function getEncryptionKey() {
+    const storedKey = localStorage.getItem('poopEncryptionKey');
+    
+    if (storedKey) {
+        // 使用已存储的密钥材料
+        const keyMaterial = await crypto.subtle.importKey(
+            'raw',
+            new Uint8Array(atob(storedKey).split('').map(char => char.charCodeAt(0))),
+            { name: 'AES-GCM', length: 256 },
+            false,
+            ['encrypt', 'decrypt']
+        );
+        return keyMaterial;
+    }
+    
+    // 生成新的256位AES密钥
+    const key = await crypto.subtle.generateKey(
+        { name: 'AES-GCM', length: 256 },
+        true,
+        ['encrypt', 'decrypt']
+    );
+    
+    // 导出并存储密钥材料
+    const exportedKey = await crypto.subtle.exportKey('raw', key);
+    localStorage.setItem('poopEncryptionKey', btoa(String.fromCharCode(...new Uint8Array(exportedKey))));
+    
+    return key;
+}
+
+/**
+ * 简单的加密函数（基于异或算法，用于向后兼容）
+ * @param {string} text - 要加密的文本
+ * @returns {string} - 加密后的文本
+ */
+function simpleEncrypt(text) {
     const key = 'poop_recorder_secret_key';
     let result = '';
     for (let i = 0; i < text.length; i++) {
         result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
     }
-    // 将结果转换为Base64，以便在localStorage中安全存储
     return btoa(result);
 }
 
 /**
- * 简单的解密函数（基于异或算法）
+ * 简单的解密函数（基于异或算法，用于向后兼容）
  * @param {string} encryptedText - 要解密的文本
  * @returns {string} - 解密后的文本
  */
-function decrypt(encryptedText) {
-    // 使用固定密钥进行解密
+function simpleDecrypt(encryptedText) {
     const key = 'poop_recorder_secret_key';
     let result = '';
-    // 先从Base64转换回原始加密文本
     const text = atob(encryptedText);
     for (let i = 0; i < text.length; i++) {
         result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
@@ -1711,7 +2200,7 @@ function closeSettingsModal() {
 /**
  * 保存用户设置
  */
-function saveSettings() {
+async function saveSettings() {
     // 获取主题设置
     const theme = document.querySelector('input[name="theme"]:checked').value;
     
@@ -1730,7 +2219,7 @@ function saveSettings() {
     
     // 加密并保存设置
     const serializedSettings = JSON.stringify(settings);
-    const encryptedSettings = encrypt(serializedSettings);
+    const encryptedSettings = await encrypt(serializedSettings);
     localStorage.setItem('poopSettings', encryptedSettings);
     
     // 应用设置
@@ -1746,7 +2235,7 @@ function saveSettings() {
 /**
  * 加载用户设置
  */
-function loadSettings() {
+async function loadSettings() {
     let settings = {
         theme: 'light',
         notifications: {
@@ -1760,7 +2249,7 @@ function loadSettings() {
         // 尝试从本地存储加载设置
         const encryptedSettings = localStorage.getItem('poopSettings');
         if (encryptedSettings) {
-            const decryptedSettings = decrypt(encryptedSettings);
+            const decryptedSettings = await decrypt(encryptedSettings);
             settings = JSON.parse(decryptedSettings);
         }
     } catch (error) {
@@ -1819,22 +2308,29 @@ function applyTheme(theme) {
  * 删除所有记录和备份
  */
 function clearAllData() {
-    if (confirm('您确定要清空所有数据吗？此操作无法撤销！')) {
-        // 清空记录
-        records = [];
-        saveRecords();
-        
-        // 清空备份
-        localStorage.removeItem('poopBackups');
-        
-        // 更新UI
-        renderRecords();
-        updateStatistics();
-        updateChart();
-        
-        // 显示成功提示
-        showToast('所有数据已清空！');
-    }
+    showConfirmModal({
+        title: '确认清空',
+        message: '您确定要清空所有数据吗？此操作无法撤销！',
+        icon: 'fa-solid fa-trash',
+        iconColor: '#ef4444',
+        danger: true,
+        onConfirm: () => {
+            // 清空记录
+            records = [];
+            saveRecords();
+            
+            // 清空备份
+            localStorage.removeItem('poopBackups');
+            
+            // 更新UI
+            renderRecords();
+            updateStatistics();
+            updateChart();
+            
+            // 显示成功提示
+            showToast('所有数据已清空！');
+        }
+    });
 }
 
 // ------------------------------------------

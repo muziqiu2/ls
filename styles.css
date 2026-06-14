@@ -1,40 +1,152 @@
+/* ============================================
+   拉屎记录器 - 样式表
+   ============================================ */
+
 /* Tailwind CSS v3 */
 /* Font Awesome */
 /* Chart.js */
 
-/* 滑动容器样式 */
+/* 全局重置和盒模型 */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+/* 根容器重置 */
+.swipe-container,
+.swipe-wrapper,
+.swipe-card,
+.card,
+#recordsList,
+.record-item {
+    box-sizing: border-box;
+}
+
+/* ============================================
+   滑动容器样式（核心修复）
+   ============================================ */
+
+/* 外层容器 - 严格控制视口宽度 */
 .swipe-container {
     overflow: hidden;
     position: relative;
     width: 100%;
+    /* 确保宽度不超过父容器 */
+    max-width: 100%;
     height: calc(100vh - 12rem);
-    /* 针对小屏幕设备优化 */
-    @media (max-height: 600px) {
+    /* 支持触摸滑动但允许垂直滚动 */
+    touch-action: pan-y;
+    -webkit-user-select: none;
+    user-select: none;
+    /* 防止 iOS 橡皮筋效果影响滑动 */
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 内层轨道 - 容纳所有卡片，宽度 = 卡片数 × 100% */
+.swipe-wrapper {
+    display: flex;
+    height: 100%;
+    width: 300%; /* 3张卡片 = 300% */
+    transition: transform 0.3s ease;
+    will-change: transform;
+    /* 确保不会有额外宽度 */
+    box-sizing: border-box;
+}
+
+/* 单张卡片 - 占轨道 1/3 宽度，内部有水平内边距避免贴边 */
+.swipe-card {
+    flex: 0 0 33.3333%; /* 精确的 1/3 宽度，与 swipe-wrapper 的 300% 对齐 */
+    width: 33.3333%;
+    height: 100%;
+    /* 卡片内水平内边距：避免内容贴边 */
+    padding: 0 4px;
+    /* 卡片内部内容垂直滚动 */
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    box-sizing: border-box;
+}
+
+/* 卡片内部的主卡片 - 提供左右安全边距 */
+.swipe-card > .card {
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;
+    /* 卡片内部 padding */
+    padding: 1.25rem;
+    /* 防止内部元素超出卡片 */
+    overflow: visible;
+}
+
+/* ============================================
+   移动端响应式调整（小屏幕）
+   ============================================ */
+
+/* 针对小屏幕设备优化高度 */
+@media (max-height: 600px) {
+    .swipe-container {
         height: calc(100vh - 10rem);
     }
-    @media (max-height: 500px) {
+}
+
+@media (max-height: 500px) {
+    .swipe-container {
         height: calc(100vh - 8rem);
     }
 }
 
-.swipe-wrapper {
-    display: flex;
-    height: 100%;
-    transition: transform 0.3s ease;
+/* 超窄屏（<375px）：缩小按钮和字号 */
+@media (max-width: 374px) {
+    header h1 {
+        font-size: 1.5rem !important;
+    }
+    .tab-btn {
+        font-size: 0.875rem !important;
+        padding: 0.625rem 0 !important;
+    }
+    .btn-primary,
+    .btn-secondary,
+    .btn-accent,
+    .btn-danger {
+        font-size: 0.875rem !important;
+        padding: 0.5rem 0.75rem !important;
+    }
+    .section-title {
+        font-size: 1rem !important;
+    }
+    .input-field {
+        font-size: 0.875rem !important;
+        padding: 0.5rem 0.75rem !important;
+    }
+    .swipe-card > .card {
+        padding: 1rem !important;
+    }
 }
 
-.swipe-card {
-    flex: 0 0 100%;
-    height: 100%;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    /* 优化移动端滚动体验 */
-    scroll-behavior: smooth;
+/* 窄屏（375px-480px）：标准移动设备 */
+@media (min-width: 375px) and (max-width: 480px) {
+    .swipe-card > .card {
+        padding: 1rem !important;
+    }
+    .tab-btn {
+        font-size: 0.9375rem !important;
+    }
 }
 
-/* 自定义滚动条 */
+/* 竖屏手机安全区适配（带刘海屏/底部条） */
+@supports (padding: env(safe-area-inset-top)) {
+    .swipe-container {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
+/* ============================================
+   自定义滚动条
+   ============================================ */
+
 ::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -51,8 +163,468 @@
     background: #94a3b8;
 }
 
-/* 触摸反馈 */
+/* 滑动卡片内的滚动条 - 更细更柔和 */
+.swipe-card::-webkit-scrollbar {
+    width: 4px;
+}
+
+.swipe-card::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.swipe-card::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.4);
+    border-radius: 8px;
+}
+
+/* ============================================
+   触摸反馈与手势
+   ============================================ */
+
 .touch-feedback {
-    touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    /* 只允许垂直滚动，水平交给 JS */
+    touch-action: pan-y;
+}
+
+/* 防止表单元素在移动端意外触发滑动 */
+.input-field,
+select,
+textarea,
+button {
+    touch-action: manipulation;
+}
+
+/* 防止用户选中文字干扰滑动 */
+.swipe-container * {
+    -webkit-user-drag: none;
+}
+
+/* ============================================
+   标签按钮样式优化
+   ============================================ */
+
+.tab-btn {
+    cursor: pointer;
+    outline: none;
+    transition: color 0.2s ease;
+}
+
+.tab-indicator {
+    height: 3px;
+    border-radius: 2px 2px 0 0;
+    transition: width 0.3s ease, background-color 0.2s ease;
+}
+
+/* ============================================
+   记录列表样式（移动端安全边距）
+   ============================================ */
+
+.record-item {
+    width: 100%;
+    box-sizing: border-box;
+    /* 移动端给左右留点呼吸空间 */
+    margin-bottom: 0.75rem;
+}
+
+#recordsList {
+    padding-right: 4px; /* 为滚动条留一点空间 */
+}
+
+/* 空状态提示 */
+#emptyState {
+    padding: 2rem 1rem;
+}
+
+/* 按钮大小移动端优化 */
+.btn-sm {
+    white-space: nowrap;
+}
+
+/* 按钮网格 - 防止操作按钮在窄屏换行贴边 */
+.record-item > div:last-child {
+    flex-shrink: 0;
+}
+
+/* ============================================
+   表单元素移动端优化
+   ============================================ */
+
+.input-field {
+    width: 100%;
+    font-size: 1rem; /* 避免 iOS 自动缩放 */
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+select.input-field {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px;
+    padding-right: 2.5rem;
+}
+
+textarea.input-field {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* 按钮统一的点击反馈 */
+.btn-primary,
+.btn-secondary,
+.btn-accent,
+.btn-danger {
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.btn-primary:active,
+.btn-secondary:active,
+.btn-accent:active,
+.btn-danger:active {
+    transform: scale(0.96);
+}
+
+/* ============================================
+   通用提示组件
+   ============================================ */
+
+#toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    left: auto;
+    z-index: 100;
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.75rem;
+    color: #ffffff;
+    font-weight: 500;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    transform: translateY(0);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    max-width: calc(100% - 3rem);
+}
+
+/* 移动端 toast 居中且宽度更宽 */
+@media (max-width: 480px) {
+    #toast {
+        left: 1rem;
+        right: 1rem;
+        bottom: 1rem;
+        text-align: center;
+        max-width: none;
+    }
+}
+
+/* ============================================
+   模态框移动端优化
+   ============================================ */
+
+#deleteModal,
+#editModal,
+#settingsModal,
+#confirmModal,
+#restoreModal {
+    padding: 1rem;
+    touch-action: manipulation;
+}
+
+#deleteModal > div,
+#editModal > div,
+#settingsModal > div,
+#confirmModal > div,
+#restoreModal > div {
+    max-width: 28rem;
+    width: 100%;
+    margin: auto;
+}
+
+/* 移动端模态框内按钮确保最小点击区域 */
+#deleteModal button,
+#editModal button,
+#settingsModal button,
+#confirmModal button,
+#restoreModal button {
+    min-height: 44px; /* 符合 WCAG 2.5.5 最小点击区域 */
+}
+
+/* ============================================
+   深色主题样式
+   ============================================ */
+
+.dark {
+    background-color: #1f2937;
+    color: #f9fafb;
+}
+
+.dark .swipe-container {
+    background-color: #1f2937;
+}
+
+.dark .swipe-card {
+    background-color: #1f2937;
+}
+
+.dark .card {
+    background-color: #374151;
+    border-color: #4b5563;
+}
+
+.dark .record-item {
+    background-color: #374151;
+    border-color: #4b5563;
+}
+
+.dark .record-item:hover {
+    border-color: #4ade80;
+}
+
+.dark .section-title {
+    color: #f9fafb;
+}
+
+.dark .input-field {
+    background-color: #4b5563;
+    border-color: #6b7280;
+    color: #f9fafb;
+}
+
+.dark .input-field::placeholder {
+    color: #9ca3af;
+}
+
+.dark .input-field:focus {
+    border-color: #4ade80;
+}
+
+.dark select.input-field {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23f9fafb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+.dark .btn-primary {
+    background-color: #4ade80;
+    color: #1f2937;
+}
+
+.dark .btn-secondary {
+    background-color: #60a5fa;
+    color: #1f2937;
+}
+
+.dark .btn-accent {
+    background-color: #fbbf24;
+    color: #1f2937;
+}
+
+.dark .btn-danger {
+    background-color: #ef4444;
+    color: #ffffff;
+}
+
+.dark .delete-btn {
+    color: #9ca3af;
+}
+
+.dark .delete-btn:hover {
+    color: #ef4444;
+    background-color: #4b5563;
+}
+
+.dark .edit-btn {
+    color: #9ca3af;
+}
+
+.dark .edit-btn:hover {
+    color: #4ade80;
+    background-color: #4b5563;
+}
+
+.dark .tab-btn {
+    color: #9ca3af;
+}
+
+.dark .tab-btn:not(.text-gray-500) {
+    color: #f9fafb;
+}
+
+.dark .text-gray-500 {
+    color: #9ca3af;
+}
+
+.dark .text-neutral-dark {
+    color: #f9fafb;
+}
+
+.dark .text-gray-600 {
+    color: #d1d5db;
+}
+
+.dark .text-gray-400 {
+    color: #9ca3af;
+}
+
+.dark .bg-neutral {
+    background-color: #4b5563;
+}
+
+.dark .bg-blue-50 {
+    background-color: #1e3a5f;
+}
+
+.dark .border-blue-100 {
+    border-color: #3b82f6;
+}
+
+.dark .text-blue-500 {
+    color: #60a5fa;
+}
+
+.dark .text-blue-700 {
+    color: #93c5fd;
+}
+
+.dark .text-blue-800 {
+    color: #bfdbfe;
+}
+
+.dark .hover\:bg-gray-300:hover {
+    background-color: #6b7280;
+}
+
+.dark .hover\:bg-gray-200:hover {
+    background-color: #4b5563;
+}
+
+.dark .bg-gray-200 {
+    background-color: #4b5563;
+    color: #f9fafb;
+}
+
+.dark .bg-gray-100 {
+    background-color: #374151;
+}
+
+.dark .border-gray-200 {
+    border-color: #4b5563;
+}
+
+.dark .border-gray-300 {
+    border-color: #6b7280;
+}
+
+.dark #toast {
+    background-color: #374151;
+    border: 1px solid #4b5563;
+}
+
+.dark #deleteModal,
+.dark #editModal,
+.dark #settingsModal,
+.dark #confirmModal,
+.dark #restoreModal {
+    background-color: rgba(0, 0, 0, 0.75);
+}
+
+.dark #deleteModal .bg-white,
+.dark #editModal .bg-white,
+.dark #settingsModal .bg-white,
+.dark #confirmModal .bg-white,
+.dark #restoreModal .bg-white {
+    background-color: #374151;
+    color: #f9fafb;
+}
+
+.dark #deleteRecordInfo {
+    background-color: #4b5563;
+}
+
+.dark #activeFilters {
+    background-color: #1e3a5f;
+    border-color: #3b82f6;
+}
+
+/* 深色主题滚动条 */
+.dark ::-webkit-scrollbar-track {
+    background: #1f2937;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: #4b5563;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+.dark .swipe-card::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.dark .swipe-card::-webkit-scrollbar-thumb {
+    background: rgba(75, 85, 99, 0.6);
+}
+
+/* 深色主题 radio/checkbox */
+.dark .form-radio,
+.dark .form-checkbox {
+    accent-color: #4ade80;
+}
+
+/* ============================================
+   滑动过渡状态
+   ============================================ */
+
+/* 正在滑动时移除过渡，跟随手指实时移动 */
+.swipe-wrapper.is-dragging {
+    transition: none;
+}
+
+/* 滑动结束/释放 - 弹性回弹效果 */
+.swipe-wrapper.snap-back {
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 模态框打开时禁用滑动容器的滚动 */
+body.modal-open .swipe-container {
+    overflow: hidden;
+    touch-action: none;
+}
+
+/* ============================================
+   图表容器 - 移动端确保不超出宽度
+   ============================================ */
+
+canvas {
+    max-width: 100%;
+    height: auto !important;
+}
+
+/* ============================================
+   防止文字选择在卡片上干扰滑动
+   ============================================ */
+
+.swipe-container,
+.swipe-wrapper {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+}
+
+/* 但卡片内部的可交互内容应保持可选 */
+.swipe-card .card,
+.swipe-card .card * {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    user-select: text;
+}
+
+/* 按钮和输入框区域不允许文本选择 */
+.swipe-card button,
+.swipe-card select,
+.swipe-card input,
+.swipe-card textarea {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
 }
