@@ -3,12 +3,19 @@
 // ==========================================
 import { el, state } from './state.js';
 
+let toastTimer = null;
+let toastActionCallback = null;
+
 /**
  * 显示通用提示
  * @param {string} message 提示信息
  * @param {string} type 类型：success | error | info
+ * @param {string} [actionLabel] 可选的右侧动作按钮文案
+ * @param {Function} [actionCallback] 动作按钮点击回调
  */
-export function showToast(message, type = 'success') {
+export function showToast(message, type = 'success', actionLabel = null, actionCallback = null) {
+  if (toastTimer) clearTimeout(toastTimer);
+
   el.toastText.textContent = message;
 
   if (type === 'success') {
@@ -22,12 +29,37 @@ export function showToast(message, type = 'success') {
     el.toast.style.backgroundColor = '#3b82f6';
   }
 
+  const hasAction = typeof actionLabel === 'string' && actionLabel && typeof actionCallback === 'function';
+  el.toastAction.textContent = actionLabel || '';
+  el.toastAction.classList.toggle('hidden', !hasAction);
+  toastActionCallback = hasAction ? actionCallback : null;
+
   el.toast.classList.remove('translate-y-20', 'opacity-0');
 
-  // 3 秒后隐藏
-  setTimeout(() => {
-    el.toast.classList.add('translate-y-20', 'opacity-0');
-  }, 3000);
+  toastTimer = setTimeout(hideToast, 3500);
+}
+
+/**
+ * 处理 Toast 动作按钮点击
+ */
+export function handleToastAction() {
+  if (toastActionCallback) {
+    const cb = toastActionCallback;
+    toastActionCallback = null;
+    cb();
+  }
+  hideToast();
+}
+
+/**
+ * 隐藏 Toast（清空动作回调与按钮）
+ */
+export function hideToast() {
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = null;
+  toastActionCallback = null;
+  el.toastAction.classList.add('hidden');
+  el.toast.classList.add('translate-y-20', 'opacity-0');
 }
 
 /**
@@ -88,11 +120,7 @@ export function handleModalOverlayClick(e) {
   if (e.target !== e.currentTarget) return;
 
   e.currentTarget.classList.add('hidden');
-  if (e.currentTarget === el.deleteModal) {
-    state.currentRecordId = null;
-  } else if (e.currentTarget === el.editModal) {
-    state.currentEditRecordId = null;
-  } else if (e.currentTarget === el.confirmModal) {
+  if (e.currentTarget === el.confirmModal) {
     state.confirmCallback = null;
   }
 }

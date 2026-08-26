@@ -2,7 +2,11 @@
 // 趋势图表（Chart.js 封装）
 // ==========================================
 import { el, state } from './state.js';
-import { formatDateShort, generateRandomColors } from './utils.js';
+import { formatDate, formatDateShort, formatTime, generateRandomColors } from './utils.js';
+
+// 当前图表范围内（已过滤）的记录及"日期标签 -> 记录"映射，供 tooltip / 点击交互使用
+let chartRangeRecords = [];
+let chartRecordsMap = {};
 
 /**
  * 初始化图表，创建 Chart.js 实例
@@ -43,11 +47,28 @@ export function initChart() {
       scales: {
         x: { grid: { display: false } },
         y: { beginAtZero: true, ticks: { stepSize: 1 } }
-      }
+      },
+      onClick: handleChartClick
     }
   });
 
   updateChart();
+}
+
+/**
+ * 处理图表点击：折线/柱状图点击某一天时，通知外部查看当日记录
+ */
+function handleChartClick(event, elements, chart) {
+  if (!elements.length) return;
+  if (chart && chart.config && chart.config.type === 'pie') return; // 饼图为地点分布，不触发
+
+  const index = elements[0].index;
+  const label = chart.data.labels[index];
+  const dayRecords = chartRangeRecords.filter(r => formatDateShort(new Date(r.timestamp)) === label);
+  if (!dayRecords.length) return;
+
+  const dateStr = formatDate(new Date(dayRecords[0].timestamp)); // YYYY-MM-DD
+  window.dispatchEvent(new CustomEvent('chart-day-click', { detail: { dateStr } }));
 }
 
 /**
@@ -67,6 +88,15 @@ export function updateChart() {
   const chartType = el.chartTypeSelect.value;
   const { startDate } = getDateRangeInfo();
   const filteredRecords = filterRecordsByDate(state.records, startDate);
+
+  // 记录当前范围内全部记录与「日期标签 -> 记录」映射，供 tooltip / 点击使用
+  chartRangeRecords = filteredRecords;
+  chartRecordsMap = {};
+  filteredRecords.forEach(record => {
+    const dateStr = formatDateShort(new Date(record.timestamp));
+    if (!chartRecordsMap[dateStr]) chartRecordsMap[dateStr] = [];
+    chartRecordsMap[dateStr].push(record);
+  });
 
   if (chartType === 'line' || chartType === 'bar') {
     generateLineBarChartData(filteredRecords, chartType);
@@ -161,7 +191,17 @@ function generateLineBarChartData(records, chartType) {
     fill: chartType === 'line' ? true : false
   }];
 
-  chart.options.plugins.tooltip.callbacks.label = context => `排便次数: ${context.raw}`;
+  chart.options.plugins.tooltip.callbacks.title = items => {
+    const label = items[0]?.label ?? '';
+    const records = chartRecordsMap[label] || [];
+    return records.length ? `${label}（${records.length}条记录）` : label;
+  };
+  chart.options.plugins.tooltip.callbacks.label = context => {
+    const records = chartRecordsMap[context.label] || [];
+    const notes = records.filter(r => r.notes).map(r => r.notes);
+    const notesText = notes.length ? `\n${notes.map(n => `• ${n}`).join('\n')}` : '';
+    return `排便次数: ${context.raw}${notesText}`;
+  };
   chart.options.scales = {
     x: { grid: { display: false } },
     y: { beginAtZero: true, ticks: { stepSize: 1 } }

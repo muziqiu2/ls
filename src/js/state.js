@@ -51,16 +51,14 @@ export function initDom() {
   el.importFileInput = document.getElementById('importFile');
   el.backupBtn = document.getElementById('backupBtn');
 
-  // 删除模态框相关
-  el.deleteModal = document.getElementById('deleteModal');
-  el.deleteRecordInfo = document.getElementById('deleteRecordInfo');
-  el.cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
-  el.confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-
   // 提示组件相关
   el.toast = document.getElementById('toast');
   el.toastIcon = document.getElementById('toastIcon');
   el.toastText = document.getElementById('toastText');
+  el.toastAction = document.getElementById('toastAction');
+
+  // 快速录入相关
+  el.fabAddBtn = document.getElementById('fabAddBtn');
 
   // 统计信息相关
   el.avgIntervalElement = document.getElementById('avgInterval');
@@ -72,17 +70,6 @@ export function initDom() {
   el.swipeContainer = document.querySelector('.swipe-container');
   el.swipeWrapper = document.querySelector('.swipe-wrapper');
   el.swipeCards = document.querySelectorAll('.swipe-card');
-
-  // 编辑模态框相关
-  el.editModal = document.getElementById('editModal');
-  el.editForm = document.getElementById('editForm');
-  el.editTimeInput = document.getElementById('editTime');
-  el.editLocation = document.getElementById('editLocation');
-  el.editOtherLocationContainer = document.getElementById('editOtherLocationContainer');
-  el.editOtherLocationInput = document.getElementById('editOtherLocation');
-  el.editType = document.getElementById('editType');
-  el.editNotes = document.getElementById('editNotes');
-  el.cancelEditBtn = document.getElementById('cancelEditBtn');
 
   // 设置相关
   el.settingsBtn = document.getElementById('settingsBtn');

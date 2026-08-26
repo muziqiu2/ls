@@ -97,11 +97,12 @@ async function getEncryptionKey() {
  */
 export function simpleEncrypt(text) {
   const key = 'poop_recorder_secret_key';
-  let result = '';
-  for (let i = 0; i < text.length; i++) {
-    result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+  const bytes = new TextEncoder().encode(text);
+  const xored = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) {
+    xored[i] = bytes[i] ^ key.charCodeAt(i % key.length);
   }
-  return btoa(result);
+  return bytesToBase64(xored);
 }
 
 /**
@@ -111,10 +112,34 @@ export function simpleEncrypt(text) {
  */
 export function simpleDecrypt(encryptedText) {
   const key = 'poop_recorder_secret_key';
-  let result = '';
-  const text = atob(encryptedText);
-  for (let i = 0; i < text.length; i++) {
-    result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+  const xored = base64ToBytes(encryptedText);
+  const bytes = new Uint8Array(xored.length);
+  for (let i = 0; i < xored.length; i++) {
+    bytes[i] = xored[i] ^ key.charCodeAt(i % key.length);
   }
-  return result;
+  return new TextDecoder().decode(bytes);
+}
+
+/**
+ * 字节数组转 Base64（分块处理，避免超长数组导致栈溢出）
+ */
+function bytesToBase64(bytes) {
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+/**
+ * Base64 转字节数组
+ */
+function base64ToBytes(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
