@@ -4,86 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>拉屎记录器</title>
-    <!-- Tailwind CSS v3 -->
-    <script src="libs/js/tailwindcss.js"></script>
     <!-- Font Awesome -->
-    <link href="libs/css/font-awesome.min.css" rel="stylesheet">
-    <!-- Chart.js -->
-    <script src="libs/js/chart.umd.min.js"></script>
-    <!-- 外部样式文件 -->
-    <link rel="stylesheet" href="styles.css">
-    <!-- 统一的 Tailwind 配置 -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#4ade80',
-                        secondary: '#60a5fa',
-                        accent: '#fbbf24',
-                        neutral: '#f1f5f9',
-                        'neutral-dark': '#334155',
-                        danger: '#ef4444'
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'system-ui', 'sans-serif'],
-                    },
-                    animation: {
-                        'bounce-slow': 'bounce 2s infinite',
-                    }
-                }
-            }
-        }
-    </script>
-    <style type="text/tailwindcss">
-        @layer utilities {
-            .glass-effect {
-                @apply bg-white/80 backdrop-blur-md;
-            }
-            .card-shadow {
-                @apply shadow-lg hover:shadow-xl transition-shadow duration-300;
-            }
-            .btn-primary {
-                @apply bg-primary text-white px-6 py-4 rounded-full font-bold text-base md:text-lg hover:bg-primary/90 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50 active:scale-95;
-            }
-            .btn-secondary {
-                @apply bg-secondary text-white px-6 py-4 rounded-full font-bold text-base md:text-lg hover:bg-secondary/90 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-secondary/50 active:scale-95;
-            }
-            .btn-accent {
-                @apply bg-accent text-white px-6 py-4 rounded-full font-bold text-base md:text-lg hover:bg-accent/90 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-accent/50 active:scale-95;
-            }
-            .btn-danger {
-                @apply bg-danger text-white px-6 py-4 rounded-full font-bold text-base md:text-lg hover:bg-danger/90 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-danger/50 active:scale-95;
-            }
-            .btn-sm {
-                @apply px-4 py-3 rounded-full font-bold text-sm active:scale-95;
-            }
-            .input-field {
-                @apply w-full px-5 py-4 text-base md:text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300;
-            }
-            .card {
-                @apply bg-white rounded-2xl p-5 card-shadow;
-            }
-            .section-title {
-                @apply text-lg md:text-xl font-bold text-neutral-dark mb-4 flex items-center;
-            }
-            .section-title i {
-                @apply mr-2 text-primary text-lg md:text-xl;
-            }
-            .record-item {
-                @apply bg-white border border-gray-200 rounded-xl p-5 hover:border-primary/50 transition-all duration-300 active:scale-[0.98];
-            }
-            .delete-btn {
-                @apply text-gray-400 hover:text-danger transition-colors p-3 rounded-full hover:bg-gray-100 active:scale-95;
-            }
-            .edit-btn {
-                @apply text-gray-400 hover:text-primary transition-colors p-3 rounded-full hover:bg-gray-100 active:scale-95;
-            }
-            .tab-indicator {
-                @apply h-1 rounded-full transition-all duration-300;
-            }
-        }
-    </style>
+    <link href="/libs/css/font-awesome.min.css" rel="stylesheet">
+    <!-- Chart.js（作为全局 Chart 使用） -->
+    <script src="/libs/js/chart.umd.min.js"></script>
 </head>
 <body class="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen">
     <div class="container mx-auto px-4 py-6 max-w-md">
@@ -183,7 +107,7 @@
                                     <i class="fa-solid fa-times mr-1"></i> 清除搜索
                                 </button>
                             </div>
-                            
+
                             <!-- 操作按钮 -->
                             <div class="flex justify-between items-center mb-2">
                                 <h2 class="section-title mb-0">
@@ -212,7 +136,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- 筛选器 -->
                         <div id="filterContainer" class="hidden bg-neutral rounded-xl p-4 mb-4">
                             <div class="grid grid-cols-1 gap-4">
@@ -234,7 +158,7 @@
                                 </button>
                             </div>
                         </div>
-                        
+
                         <!-- 筛选条件显示 -->
                         <div id="activeFilters" class="hidden bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4">
                             <div class="flex items-center justify-between">
@@ -248,7 +172,7 @@
                                 </button>
                             </div>
                         </div>
-                        
+
                         <!-- 记录列表列表 -->
                         <div id="recordsList" class="flex-grow overflow-y-auto pr-2 space-y-3">
                             <!-- 记录将通过 JavaScript 动态添加 -->
@@ -256,7 +180,7 @@
                                 <i class="fa-solid fa-poop text-4xl mb-3 text-primary animate-bounce-slow"></i>
                                 <h3 class="text-xl font-bold mb-2 text-neutral-dark">暂无排便记录</h3>
                                 <p class="mb-4">点击顶部"添加"标签开始记录您的第一次排便</p>
-                                <button class="btn-primary btn-sm mx-auto" onclick="switchTab(0)">
+                                <button class="btn-primary btn-sm mx-auto" data-index="0">
                                     <i class="fa-solid fa-plus-circle mr-1"></i> 添加第一条记录
                                 </button>
                             </div>
@@ -287,7 +211,7 @@
                                 <p class="text-gray-500 text-sm">TOP 1</p>
                             </div>
                         </div>
-                        
+
                         <!-- 图表设置 -->
                         <div class="mb-4">
                             <div class="grid grid-cols-2 gap-4">
@@ -313,7 +237,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- 图表容器 -->
                         <div class="flex-grow">
                             <canvas id="trendChart" height="200"></canvas>
@@ -486,7 +410,7 @@
         <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
             <h3 class="text-xl font-bold text-neutral-dark mb-4">恢复备份</h3>
             <p class="text-gray-600 mb-4">选择要恢复的备份：</p>
-            
+
             <!-- 备份列表 -->
             <div id="backupsList" class="flex-grow overflow-y-auto space-y-2 mb-4">
                 <!-- 备份项将通过JavaScript动态添加 -->
@@ -495,7 +419,7 @@
                     <p>暂无备份</p>
                 </div>
             </div>
-            
+
             <div class="flex justify-end space-x-3">
                 <button id="cancelRestoreBtn" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors active:scale-95">
                     取消
@@ -512,7 +436,7 @@
         </div>
     </div>
 
-    <!-- 外部JavaScript文件 -->
-    <script src="script.js"></script>
+    <!-- Vite 应用入口模块 -->
+    <script type="module" src="/src/main.js"></script>
 </body>
 </html>
