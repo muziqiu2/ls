@@ -2,6 +2,7 @@
 // 统计信息（平均间隔 / 本周次数 / 常用地点）
 // ==========================================
 import { el, state } from './state.js';
+import { updateInsights } from './insights.js';
 
 /**
  * 计算并显示平均间隔、本周次数和常用地点
@@ -59,4 +60,7 @@ export function updateStatistics() {
   }
 
   el.commonLocationElement.textContent = commonLocation;
+
+  // 规律洞察（连续天数 / 周对比 / 健康建议）
+  updateInsights();
 }

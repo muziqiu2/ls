@@ -65,6 +65,13 @@ export function initDom() {
   el.weeklyCountElement = document.getElementById('weeklyCount');
   el.commonLocationElement = document.getElementById('commonLocation');
 
+  // 规律洞察相关
+  el.streakCountElement = document.getElementById('streakCount');
+  el.weekCompareElement = document.getElementById('weekCompare');
+  el.weekCompareMetaElement = document.getElementById('weekCompareMeta');
+  el.regularityBoxElement = document.getElementById('regularityBox');
+  el.regularityTextElement = document.getElementById('regularityText');
+
   // 标签页与滑动相关
   el.tabBtns = document.querySelectorAll('.tab-btn');
   el.swipeContainer = document.querySelector('.swipe-container');
