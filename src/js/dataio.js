@@ -31,6 +31,69 @@ export function exportData() {
 }
 
 /**
+ * 切换导出下拉菜单显隐
+ */
+export function toggleExportDropdown() {
+  el.exportDropdown.classList.toggle('hidden');
+}
+
+/**
+ * 收起导出下拉菜单
+ */
+function closeExportDropdown() {
+  el.exportDropdown.classList.add('hidden');
+}
+
+/**
+ * 根据选择的格式导出数据
+ */
+export function handleExportOption(e) {
+  const format = e.currentTarget.dataset.format;
+  closeExportDropdown();
+  if (format === 'csv') {
+    exportCsv();
+  } else {
+    exportData();
+  }
+}
+
+/**
+ * 导出记录为 CSV（含 UTF-8 BOM，Excel 可直接打开中文不乱码）
+ */
+export function exportCsv() {
+  if (state.records.length === 0) {
+    showToast('没有记录可导出', 'error');
+    return;
+  }
+
+  const escapeCsv = (value) => {
+    const str = value == null ? '' : String(value);
+    return /\n|"|,/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+  };
+
+  const header = ['时间', '地点', '类型', '备注'];
+  const rows = [...state.records]
+    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+    .map(r => [
+      new Date(r.timestamp).toLocaleString('zh-CN', { hour12: false }),
+      r.location || '',
+      r.type || '',
+      r.notes || ''
+    ].map(escapeCsv).join(','));
+
+  const csv = '\ufeff' + [header.join(','), ...rows].join('\r\n');
+  const dataUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  const exportFileDefaultName = `poop_records_${new Date().toISOString().split('T')[0]}.csv`;
+
+  const linkElement = document.createElement('a');
+  linkElement.setAttribute('href', dataUri);
+  linkElement.setAttribute('download', exportFileDefaultName);
+  linkElement.click();
+
+  showToast(`成功导出 ${state.records.length} 条记录！`);
+}
+
+/**
  * 触发文件导入（点击隐藏的 file input）
  */
 export function triggerImport() {

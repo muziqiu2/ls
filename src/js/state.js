@@ -47,6 +47,8 @@ export function initDom() {
 
   // 数据导入导出相关
   el.exportBtn = document.getElementById('exportBtn');
+  el.exportMenu = document.getElementById('exportMenu');
+  el.exportDropdown = document.getElementById('exportDropdown');
   el.importBtn = document.getElementById('importBtn');
   el.importFileInput = document.getElementById('importFile');
   el.backupBtn = document.getElementById('backupBtn');

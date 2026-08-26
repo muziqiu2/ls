@@ -27,7 +27,8 @@ import {
   onChartDayClick,
 } from './records.js';
 import {
-  exportData,
+  toggleExportDropdown,
+  handleExportOption,
   triggerImport,
   handleImportFile,
   createManualBackup,
@@ -58,7 +59,9 @@ function bindEvents() {
   document.getElementById('clearSearchBtn').addEventListener('click', clearSearch);
 
   // 数据导入导出 / 备份
-  document.getElementById('exportBtn').addEventListener('click', exportData);
+  el.exportBtn.addEventListener('click', toggleExportDropdown);
+  document.querySelectorAll('.export-opt').forEach(opt => opt.addEventListener('click', handleExportOption));
+  document.querySelectorAll('.export-opt').forEach(opt => opt.addEventListener('click', e => e.stopPropagation()));
   document.getElementById('importBtn').addEventListener('click', triggerImport);
   document.getElementById('importFile').addEventListener('change', handleImportFile);
   document.getElementById('backupBtn').addEventListener('click', createManualBackup);
@@ -90,6 +93,13 @@ function bindEvents() {
 
   // 键盘快捷键
   document.addEventListener('keydown', handleKeydown);
+
+  // 点击导出下拉菜单外部时收起
+  document.addEventListener('click', (e) => {
+    if (el.exportMenu && !el.exportMenu.contains(e.target)) {
+      el.exportDropdown.classList.add('hidden');
+    }
+  });
 }
 
 /**

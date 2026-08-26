@@ -117,9 +117,19 @@
                                     <button id="filterBtn" class="btn-secondary btn-sm py-3 px-3 text-sm">
                                         <i class="fa-solid fa-filter mr-1"></i> 筛选
                                     </button>
-                                    <button id="exportBtn" class="btn-accent btn-sm py-3 px-3 text-sm">
-                                        <i class="fa-solid fa-download mr-1"></i> 导出
-                                    </button>
+                                    <div id="exportMenu" class="relative">
+                                        <button id="exportBtn" class="btn-accent btn-sm py-3 px-3 text-sm">
+                                            <i class="fa-solid fa-download mr-1"></i> 导出
+                                        </button>
+                                        <div id="exportDropdown" class="hidden absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-100 overflow-hidden z-30">
+                                            <button class="export-opt block w-full text-left px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700" data-format="json">
+                                                <i class="fa-solid fa-file-code mr-2 text-gray-400"></i>JSON 文件
+                                            </button>
+                                            <button class="export-opt block w-full text-left px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700" data-format="csv">
+                                                <i class="fa-solid fa-table mr-2 text-green-500"></i>CSV / Excel
+                                            </button>
+                                        </div>
+                                    </div>
                                     <button id="importBtn" class="btn-secondary btn-sm py-3 px-3 text-sm">
                                     <i class="fa-solid fa-upload mr-1"></i> 导入
                                 </button>
