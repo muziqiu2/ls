@@ -289,6 +289,13 @@ button {
     appearance: none;
 }
 
+/* 搜索框：用 id 级覆盖，保证左侧放大镜与右侧清除按钮都有留白，
+   避免任何视口宽度下双向覆盖类跑偏导致图标与占位文字重叠 */
+#searchInput {
+    padding-left: 2.75rem;
+    padding-right: 4.5rem;
+}
+
 select.input-field {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
     background-repeat: no-repeat;
