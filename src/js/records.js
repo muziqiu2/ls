@@ -26,6 +26,15 @@ export function setCurrentTime() {
 }
 
 /**
+ * 展开 / 收起补充表单折叠面板（替代原生 <details>，避免切标签后展开失效）
+ */
+export function toggleSupplement() {
+  const isOpen = el.supplementWrap.classList.toggle('is-open');
+  el.supplementToggle.setAttribute('aria-expanded', String(isOpen));
+  if (isOpen) setCurrentTime(); // 展开时刷新时间，确保用户看到的是“现在”
+}
+
+/**
  * 处理地点选择变化，显示/隐藏自定义地点输入框
  */
 export function handleLocationChange() {

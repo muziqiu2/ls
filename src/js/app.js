@@ -19,6 +19,7 @@ import {
   handleFormSubmit,
   quickLog,
   handleLocationChange,
+  toggleSupplement,
   toggleFilterContainer,
   applyFilter,
   resetFilter,
@@ -50,6 +51,7 @@ function bindEvents() {
   // 添加表单
   document.getElementById('recordForm').addEventListener('submit', handleFormSubmit);
   document.getElementById('location').addEventListener('change', handleLocationChange);
+  document.getElementById('supplementToggle').addEventListener('click', toggleSupplement);
 
   // 筛选与搜索
   document.getElementById('filterBtn').addEventListener('click', toggleFilterContainer);

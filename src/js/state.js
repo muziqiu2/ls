@@ -21,6 +21,8 @@ export const el = {};
 export function initDom() {
   // 表单单元素
   el.recordForm = document.getElementById('recordForm');
+  el.supplementToggle = document.getElementById('supplementToggle');
+  el.supplementWrap = document.getElementById('supplementWrap');
   el.recordTimeInput = document.getElementById('recordTime');
   el.locationSelect = document.getElementById('location');
   el.otherLocationContainer = document.getElementById('otherLocationContainer');

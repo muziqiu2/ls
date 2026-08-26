@@ -115,13 +115,15 @@
                             <p class="mt-8 text-xs text-gray-400">一键记录「现在 · 家里」，快人一步</p>
                         </div>
 
-                        <!-- 详细记录（默认折叠，保证打卡简单） -->
-                        <details id="detailToggle" class="group">
-                            <summary class="list-none flex items-center justify-center gap-2 py-3 text-sm font-medium text-gray-500 cursor-pointer select-none">
-                                补充时间 / 地点 / 类型 / 备注
-                                <i class="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180"></i>
-                            </summary>
-                            <form id="recordForm" class="space-y-4 mt-2">
+                        <!-- 补充详情（默认折叠，保证打卡简单） -->
+                        <div id="supplementWrap" class="supplement-wrap">
+                            <button id="supplementToggle" type="button" aria-expanded="false" aria-controls="supplementPanel" class="supplement-toggle">
+                                <i class="fa-solid fa-sliders supplement-toggle-icon"></i>
+                                <span class="supplement-toggle-label">补充时间 / 地点 / 类型 / 备注</span>
+                                <i class="fa-solid fa-chevron-down supplement-chevron"></i>
+                            </button>
+                            <div id="supplementPanel" class="supplement-panel" role="region" aria-labelledby="supplementToggle">
+                            <form id="recordForm" class="space-y-4">
                                 <div>
                                     <label for="recordTime" class="block text-gray-600 mb-1.5 text-sm font-medium">时间</label>
                                     <input type="datetime-local" id="recordTime" class="input-field">
@@ -158,7 +160,8 @@
                                     <i class="fa-solid fa-check mr-2"></i>保存记录
                                 </button>
                             </form>
-                        </details>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
