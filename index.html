@@ -268,9 +268,12 @@
                         <label for="notes" class="block text-gray-600 mb-1.5 text-sm font-medium">备注（可选）</label>
                         <textarea id="notes" class="input-field" rows="3" placeholder="例如：早餐前，比较顺畅"></textarea>
                     </div>
-                    <button type="submit" class="btn-primary w-full">
-                        <i class="fa-solid fa-check mr-2"></i>保存记录
-                    </button>
+                    <div class="pt-1">
+                        <p class="text-xs text-gray-400 text-center mb-3 leading-relaxed">填写内容将作为本次打卡的内容，<br>确认后在打卡页点「打卡」按钮即可保存</p>
+                        <button type="button" data-close-supplement class="btn-primary w-full">
+                            <i class="fa-solid fa-check mr-2"></i>确认填写
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>

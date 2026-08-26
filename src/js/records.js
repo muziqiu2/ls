@@ -96,10 +96,10 @@ function resetForm() {
 }
 
 /**
- * 显示提交成功动画
+ * 显示提交成功动画（打在中央「打卡」按钮上，因为保存动作就是它）
  */
 function showSuccessAnimation() {
-  const submitBtn = el.recordForm.querySelector('button[type="submit"]');
+  const submitBtn = document.getElementById('bigLogBtn');
   const originalText = submitBtn.innerHTML;
   submitBtn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> 成功！';
   submitBtn.classList.add('bg-green-500');
@@ -147,18 +147,13 @@ export async function handleFormSubmit(e) {
 }
 
 /**
- * 一键打卡：以「当前时间 · 家里」极简记录一次
- * 复用表单提交逻辑，保证与详细录入行为一致
+ * 一键打卡：保存「补充表单」里已填好的内容作为本次记录。
+ * 补充表单只是预填区，真正保存统一走这里（点底部「打卡」）。
+ * 未填写时使用默认值（当前时间·家里），打完卡后表单会重置。
  */
 export async function quickLog() {
   const btn = document.getElementById('bigLogBtn');
   btn.classList.add('logged');
-  setCurrentTime();          // 时间=现在
-  el.locationSelect.value = '家里';
-  el.typeSelect.value = '';
-  el.notesInput.value = '';
-  el.otherLocationInput.value = '';
-  el.otherLocationContainer.classList.add('hidden');
 
   await handleFormSubmit({ preventDefault: () => {} });
 

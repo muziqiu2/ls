@@ -58,6 +58,16 @@ function handleTouchStart(e) {
     return;
   }
 
+  // 在可交互控件上按下不启动横滑，避免手指轻微横向位移把按钮点击误判成滑动、
+  // 进而吞掉点击导致“点补充按钮没反应”
+  if (e.target.closest('button, input, select, textarea, a')) {
+    isSwipeActive = false;
+    swipeDirectionLocked = 'vertical';
+    startX = 0;
+    startY = 0;
+    return;
+  }
+
   const touch = e.touches[0];
   startX = touch.clientX;
   startY = touch.clientY;
@@ -148,6 +158,14 @@ function handleTouchEnd(e) {
 }
 
 function handleMouseDown(e) {
+  // 在可交互控件上不启动横滑，避免把按钮点击误判成滑动（同触摸逻辑）
+  if (e.target.closest('button, input, select, textarea, a')) {
+    isSwipeActive = false;
+    swipeDirectionLocked = null;
+    startX = 0;
+    startY = 0;
+    return;
+  }
   startX = e.clientX;
   startY = e.clientY;
   swipeStartTimestamp = Date.now();
