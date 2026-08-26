@@ -26,12 +26,29 @@ export function setCurrentTime() {
 }
 
 /**
- * 展开 / 收起补充表单折叠面板（替代原生 <details>，避免切标签后展开失效）
+ * 展开 / 收起补充记录底部抽屉
+ * 采用 visibility+opacity 控制显隐，保证滑入/滑出的过渡动画稳定。
  */
 export function toggleSupplement() {
-  const isOpen = el.supplementWrap.classList.toggle('is-open');
-  el.supplementToggle.setAttribute('aria-expanded', String(isOpen));
-  if (isOpen) setCurrentTime(); // 展开时刷新时间，确保用户看到的是“现在”
+  if (el.supplementSheet.classList.contains('is-open')) {
+    closeSupplement();
+  } else {
+    openSupplement();
+  }
+}
+
+function openSupplement() {
+  el.supplementSheet.classList.add('is-open');
+  el.supplementToggle.setAttribute('aria-expanded', 'true');
+  setCurrentTime(); // 打开时刷新为「现在」，确保用户看到的就是当前时间
+}
+
+/**
+ * 关闭补充记录底部抽屉
+ */
+export function closeSupplement() {
+  el.supplementSheet.classList.remove('is-open');
+  el.supplementToggle.setAttribute('aria-expanded', 'false');
 }
 
 /**
@@ -126,6 +143,7 @@ export async function handleFormSubmit(e) {
   resetForm();
   refreshAfterDataChange();
   showSuccessAnimation();
+  setTimeout(closeSupplement, 900); // 先展示“保存成功”，再自动收起抽屉
 }
 
 /**

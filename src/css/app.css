@@ -120,6 +120,11 @@
         font-size: 0.875rem !important;
         padding: 0.5rem 0.75rem !important;
     }
+    /* 搜索框需保留左侧图标与右侧清除按钮的空间，避免窄屏时被上面的 !important 覆盖导致文字与图标重叠 */
+    #searchInput {
+        padding-left: 2.5rem !important;
+        padding-right: 4rem !important;
+    }
     .swipe-card > .card {
         padding: 1rem !important;
     }
@@ -812,9 +817,9 @@ canvas {
    打卡页「补充时间 / 地点 / 类型 / 备注」折叠表单
    ============================================ */
 
-/* 补充表单折叠面板 —— 用 JS 控制展开/收起，替代原生 <details>
-   原生 <details> 在卡片被 translateX 移出视口后，切回再展开时部分浏览器
-   无法可靠重算其内容高度，导致表单不显示。改为自绘面板后行为完全可控。 */
+/* 补充表单交互：改为“底部抽屉”上拉填写，替代原先内联展开与 <details>。
+   原生 <details> 在卡片被 translateX 移出视口后切回再展开时，部分浏览器
+   无法可靠重算内容高度导致表单不显示；底部抽屉不占用打卡页布局。 */
 
 /* 触发器：做成通栏卡片式的浅色“横条”，点击区 ≥44px */
 .supplement-toggle {
@@ -837,34 +842,63 @@ canvas {
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 .supplement-toggle:active { background: rgba(255, 255, 255, 0.9); }
-.supplement-wrap.is-open .supplement-toggle {
-    background: rgba(255, 255, 255, 0.85);
-    border-style: solid;
-    border-color: rgba(16, 185, 129, 0.5);
-    color: #047857;
-}
 .supplement-toggle-icon { color: #34d399; font-size: 0.8rem; }
-.supplement-chevron { color: #10b981; font-size: 0.8rem; transition: transform 0.35s ease; }
-.supplement-wrap.is-open .supplement-chevron { transform: rotate(180deg); }
+.supplement-chevron { color: #10b981; font-size: 0.8rem; }
 
-/* 展开面板：max-height 过渡动画 + 内部滚动。
-   收起时高度压到 0；展开时限高不压扁中央「打卡」大按钮，窄屏不溢出。 */
-.supplement-panel {
-    max-height: 0;
-    overflow-y: hidden;
+/* ============================================
+   补充记录：底部抽屉（Bottom Sheet）
+   - 从屏幕底部上滑，不打乱打卡页布局、不压扁中央按钮
+   - 用 visibility+opacity 控制显隐，保证滑入/滑出过渡动画稳定
+   ============================================ */
+#supplementSheet {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    visibility: hidden;
     opacity: 0;
-    transform: translateY(-6px);
-    transition: max-height 0.38s cubic-bezier(.22,1,.36,1), opacity 0.28s ease, transform 0.28s ease;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+    -webkit-tap-highlight-color: transparent;
 }
-.supplement-wrap.is-open .supplement-panel {
-    max-height: min(62vh, 26rem);
-    overflow-y: auto;
+#supplementSheet.is-open {
+    visibility: visible;
     opacity: 1;
-    transform: translateY(0);
-    -webkit-overflow-scrolling: touch;
+    pointer-events: auto;
+    transition: opacity 0.3s ease, visibility 0s;
+}
+#supplementSheet .supplement-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+}
+#supplementSheet .supplement-sheet-panel {
+    position: relative;
+    width: 100%;
+    max-width: 28rem;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 1.5rem 1.5rem 0 0;
+    padding: 0.75rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom));
+    max-height: min(82vh, 30rem);
+    overflow-y: auto;
     overscroll-behavior: contain;
-    padding-top: 1rem;
-    padding-right: 4px;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.15);
+    transform: translateY(100%);
+    transition: transform 0.38s cubic-bezier(.22, 1, .36, 1);
+}
+#supplementSheet.is-open .supplement-sheet-panel { transform: translateY(0); }
+
+/* 顶部拖拽指示条 */
+#supplementSheet .supplement-sheet-handle {
+    width: 2.5rem;
+    height: 0.3125rem;
+    border-radius: 999px;
+    background: #d1d5db;
+    margin: 0 auto 0.75rem;
 }
 
 /* 选项卡内按钮最小点击区 */

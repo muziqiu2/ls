@@ -20,6 +20,7 @@ import {
   quickLog,
   handleLocationChange,
   toggleSupplement,
+  closeSupplement,
   toggleFilterContainer,
   applyFilter,
   resetFilter,
@@ -52,6 +53,7 @@ function bindEvents() {
   document.getElementById('recordForm').addEventListener('submit', handleFormSubmit);
   document.getElementById('location').addEventListener('change', handleLocationChange);
   document.getElementById('supplementToggle').addEventListener('click', toggleSupplement);
+  document.querySelectorAll('[data-close-supplement]').forEach(btn => btn.addEventListener('click', closeSupplement));
 
   // 筛选与搜索
   document.getElementById('filterBtn').addEventListener('click', toggleFilterContainer);
@@ -136,6 +138,7 @@ function handleKeydown(e) {
     [el.settingsModal, el.restoreModal, el.confirmModal].forEach(m => {
       if (m) m.classList.add('hidden');
     });
+    closeSupplement();
   }
 }
 

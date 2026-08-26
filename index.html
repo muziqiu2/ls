@@ -115,53 +115,12 @@
                             <p class="mt-8 text-xs text-gray-400">一键记录「现在 · 家里」，快人一步</p>
                         </div>
 
-                        <!-- 补充详情（默认折叠，保证打卡简单） -->
-                        <div id="supplementWrap" class="supplement-wrap">
-                            <button id="supplementToggle" type="button" aria-expanded="false" aria-controls="supplementPanel" class="supplement-toggle">
-                                <i class="fa-solid fa-sliders supplement-toggle-icon"></i>
-                                <span class="supplement-toggle-label">补充时间 / 地点 / 类型 / 备注</span>
-                                <i class="fa-solid fa-chevron-down supplement-chevron"></i>
-                            </button>
-                            <div id="supplementPanel" class="supplement-panel" role="region" aria-labelledby="supplementToggle">
-                            <form id="recordForm" class="space-y-4">
-                                <div>
-                                    <label for="recordTime" class="block text-gray-600 mb-1.5 text-sm font-medium">时间</label>
-                                    <input type="datetime-local" id="recordTime" class="input-field">
-                                </div>
-                                <div>
-                                    <label for="location" class="block text-gray-600 mb-1.5 text-sm font-medium">地点</label>
-                                    <select id="location" class="input-field">
-                                        <option value="家里">家里</option>
-                                        <option value="公司">公司</option>
-                                        <option value="学校">学校</option>
-                                        <option value="公共场所">公共场所</option>
-                                        <option value="其他">其他</option>
-                                    </select>
-                                </div>
-                                <div id="otherLocationContainer" class="hidden">
-                                    <label for="otherLocation" class="block text-gray-600 mb-1.5 text-sm font-medium">其他地点</label>
-                                    <input type="text" id="otherLocation" class="input-field" placeholder="请输入地点">
-                                </div>
-                                <div>
-                                    <label for="type" class="block text-gray-600 mb-1.5 text-sm font-medium">类型（可选）</label>
-                                    <select id="type" class="input-field">
-                                        <option value="">请选择类型</option>
-                                        <option value="正常">正常</option>
-                                        <option value="干燥">干燥</option>
-                                        <option value="稀便">稀便</option>
-                                        <option value="腹泻">腹泻</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="notes" class="block text-gray-600 mb-1.5 text-sm font-medium">备注（可选）</label>
-                                    <textarea id="notes" class="input-field" rows="3" placeholder="例如：早餐前，比较顺畅"></textarea>
-                                </div>
-                                <button type="submit" class="btn-primary w-full">
-                                    <i class="fa-solid fa-check mr-2"></i>保存记录
-                                </button>
-                            </form>
-                            </div>
-                        </div>
+                        <!-- 补充详情：点击打开底部抽屉填写 -->
+                        <button id="supplementToggle" type="button" aria-expanded="false" aria-controls="supplementSheet" class="supplement-toggle">
+                            <i class="fa-solid fa-sliders supplement-toggle-icon"></i>
+                            <span class="supplement-toggle-label">补充时间 / 地点 / 类型 / 备注</span>
+                            <i class="fa-solid fa-chevron-up supplement-chevron"></i>
+                        </button>
                     </div>
                 </section>
 
@@ -262,6 +221,59 @@
                 <span class="bn-indicator"></span>
             </button>
         </nav>
+
+        <!-- 补充记录：底部抽屉 -->
+        <div id="supplementSheet" class="fixed inset-0 z-[70]">
+            <div class="supplement-backdrop" data-close-supplement></div>
+            <div class="supplement-sheet-panel">
+                <div class="supplement-sheet-handle"></div>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-neutral-dark flex items-center">
+                        <i class="fa-solid fa-sliders text-emerald-500 mr-2"></i>补充记录
+                    </h3>
+                    <button type="button" data-close-supplement aria-label="关闭" class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 active:scale-95 transition-transform">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <form id="recordForm" class="space-y-4">
+                    <div>
+                        <label for="recordTime" class="block text-gray-600 mb-1.5 text-sm font-medium">时间</label>
+                        <input type="datetime-local" id="recordTime" class="input-field">
+                    </div>
+                    <div>
+                        <label for="location" class="block text-gray-600 mb-1.5 text-sm font-medium">地点</label>
+                        <select id="location" class="input-field">
+                            <option value="家里">家里</option>
+                            <option value="公司">公司</option>
+                            <option value="学校">学校</option>
+                            <option value="公共场所">公共场所</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                    <div id="otherLocationContainer" class="hidden">
+                        <label for="otherLocation" class="block text-gray-600 mb-1.5 text-sm font-medium">其他地点</label>
+                        <input type="text" id="otherLocation" class="input-field" placeholder="请输入地点">
+                    </div>
+                    <div>
+                        <label for="type" class="block text-gray-600 mb-1.5 text-sm font-medium">类型（可选）</label>
+                        <select id="type" class="input-field">
+                            <option value="">请选择类型</option>
+                            <option value="正常">正常</option>
+                            <option value="干燥">干燥</option>
+                            <option value="稀便">稀便</option>
+                            <option value="腹泻">腹泻</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="notes" class="block text-gray-600 mb-1.5 text-sm font-medium">备注（可选）</label>
+                        <textarea id="notes" class="input-field" rows="3" placeholder="例如：早餐前，比较顺畅"></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary w-full">
+                        <i class="fa-solid fa-check mr-2"></i>保存记录
+                    </button>
+                </form>
+            </div>
+        </div>
 
         <!-- 设置：底部抽屉 -->
         <div id="settingsModal" class="fixed inset-0 bg-black/40 flex items-end z-50 hidden">
