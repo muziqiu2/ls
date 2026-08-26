@@ -31,6 +31,20 @@ export function formatTime(date) {
 }
 
 /**
+ * 生成 datetime-local 输入框所需的本地时间值（YYYY-MM-DDTHH:MM）
+ * 注意：不能用 date.toISOString()（它返回的是 UTC），否则在非 UTC 时区
+ * 会给输入框回填错误的时间（如东八区会相差 8 小时）。
+ */
+export function toDateTimeLocalValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+/**
  * HTML 转义函数，防止 XSS 攻击
  */
 export function escapeHtml(text) {

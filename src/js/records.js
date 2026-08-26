@@ -3,7 +3,7 @@
 // ==========================================
 import { el, state } from './state.js';
 import { saveRecords } from './storage.js';
-import { formatDate, formatTime, escapeHtml } from './utils.js';
+import { formatDate, formatTime, escapeHtml, toDateTimeLocalValue } from './utils.js';
 import { showToast } from './ui.js';
 import { updateStatistics } from './stats.js';
 import { updateChart } from './chart.js';
@@ -22,8 +22,7 @@ const pendingDeletes = [];
  * 设置时间输入框为当前时间（datetime-local 格式）
  */
 export function setCurrentTime() {
-  const now = new Date();
-  el.recordTimeInput.value = now.toISOString().slice(0, 16);
+  el.recordTimeInput.value = toDateTimeLocalValue(new Date());
 }
 
 /**
@@ -378,7 +377,7 @@ function createRecordElement(record) {
 
   function populateEdit() {
     const d = new Date(record.timestamp);
-    ieTime.value = isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 16);
+    ieTime.value = isNaN(d.getTime()) ? '' : toDateTimeLocalValue(d);
     const isPreset = PRESET_LOCATIONS.includes(record.location);
     ieLocation.value = isPreset ? record.location : '其他';
     ieOtherWrap.classList.toggle('hidden', ieLocation.value !== '其他');

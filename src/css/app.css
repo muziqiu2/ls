@@ -808,6 +808,23 @@ canvas {
 }
 .rise-in { animation: rise-in 0.45s cubic-bezier(.22,1,.36,1) both; }
 
+/* ============================================
+   打卡页「补充时间 / 地点 / 类型 / 备注」折叠表单
+   ============================================ */
+
+/* 隐藏各浏览器对 <summary> 默认渲染的展开箭头（避免与本应用自画 chevron 重复） */
+summary { list-style: none; }
+summary::-webkit-details-marker { display: none; }
+
+/* 展开后表单限高并内部滚动：不清空、不压扁中央「打卡」大按钮，窄屏也不溢出 */
+#detailToggle[open] form {
+    max-height: min(62vh, 26rem);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+}
+
 /* 选项卡内按钮最小点击区 */
 .mobile-shell button, .mobile-shell .input-field, .mobile-shell select {
     min-height: 44px;
