@@ -1,7 +1,7 @@
 // ==========================================
 // 应用入口：初始化 + 事件绑定
 // ==========================================
-import { initDom, el } from './state.js';
+import { initDom, el, state } from './state.js';
 import { loadRecords } from './storage.js';
 import { initChart, updateChart } from './chart.js';
 import { updateStatistics } from './stats.js';
@@ -17,6 +17,7 @@ import {
   setCurrentTime,
   setDefaultDates,
   handleFormSubmit,
+  quickLog,
   handleLocationChange,
   toggleFilterContainer,
   applyFilter,
@@ -88,8 +89,8 @@ function bindEvents() {
   // Toast 动作按钮（如删除撤销）
   el.toastAction.addEventListener('click', handleToastAction);
 
-  // 快速录入悬浮按钮
-  el.fabAddBtn.addEventListener('click', handleQuickAdd);
+  // 一键打卡
+  document.getElementById('bigLogBtn').addEventListener('click', quickLog);
 
   // 键盘快捷键
   document.addEventListener('keydown', handleKeydown);
@@ -103,13 +104,10 @@ function bindEvents() {
 }
 
 /**
- * 快速新建：切到「添加」标签并聚焦时间输入框
+ * 快速新建：跳到「打卡」标签页，准备录入
  */
 function handleQuickAdd() {
-  switchTab(0);
-  if (el.recordTimeInput) {
-    el.recordTimeInput.focus({ preventScroll: true });
-  }
+  switchTab(1);
 }
 
 /**
@@ -151,6 +149,7 @@ async function init() {
   updateStatistics();
   initChart();
   initSwipeEvents();
+  switchTab(state.currentTabIndex); // 初始定位到默认标签页并同步底部/顶部激活态
   setDefaultDates();
   window.addEventListener('chart-day-click', onChartDayClick);
 }

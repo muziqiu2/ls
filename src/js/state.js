@@ -8,7 +8,7 @@ export const state = {
   currentRecordId: null,      // 当前选中要删除的记录 ID
   currentEditRecordId: null,  // 当前编辑的记录 ID
   trendChart: null,           // 图表实例
-  currentTabIndex: 0,         // 当前标签页索引
+  currentTabIndex: 1,         // 当前标签页索引（0=历史 1=打卡 2=统计，默认进入打卡）
   confirmCallback: null,      // 通用确认模态框回调
 };
 

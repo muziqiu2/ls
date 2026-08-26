@@ -120,6 +120,25 @@ export async function handleFormSubmit(e) {
   showSuccessAnimation();
 }
 
+/**
+ * 一键打卡：以「当前时间 · 家里」极简记录一次
+ * 复用表单提交逻辑，保证与详细录入行为一致
+ */
+export async function quickLog() {
+  const btn = document.getElementById('bigLogBtn');
+  btn.classList.add('logged');
+  setCurrentTime();          // 时间=现在
+  el.locationSelect.value = '家里';
+  el.typeSelect.value = '';
+  el.notesInput.value = '';
+  el.otherLocationInput.value = '';
+  el.otherLocationContainer.classList.add('hidden');
+
+  await handleFormSubmit({ preventDefault: () => {} });
+
+  setTimeout(() => btn.classList.remove('logged'), 900);
+}
+
 // ---------- 搜索 / 筛选 ----------
 
 export function toggleFilterContainer() {
@@ -216,12 +235,12 @@ export function renderRecords() {
     el.recordsList.innerHTML = '';
 
     const title = el.emptyState.querySelector('.empty-title');
-    const desc = el.emptyState.querySelector('p');
+    const desc = el.emptyState.querySelector('.empty-desc');
     const btn = el.emptyState.querySelector('button');
 
     if (state.records.length === 0) {
       if (title) title.textContent = '暂无排便记录';
-      if (desc) desc.textContent = '点击顶部"添加"标签开始记录您的第一次排便';
+      if (desc) desc.textContent = '点下方「打卡」一键记录今天的第一次';
     } else {
       if (title) title.textContent = '暂无符合条件的记录';
       if (desc) desc.textContent = '尝试调整筛选条件或清除搜索';
@@ -535,7 +554,7 @@ export function onChartDayClick({ detail }) {
   el.startDateInput.value = detail.dateStr;
   el.endDateInput.value = detail.dateStr;
 
-  switchTab(1);
+  switchTab(0);
   renderRecords();
   updateActiveFilters();
   showToast(`已筛选 ${detail.dateStr} 的记录`, 'info');
@@ -550,4 +569,20 @@ function refreshAfterDataChange() {
   renderRecords();
   updateStatistics();
   updateChart();
+  refreshTodayCount();
+}
+
+/**
+ * 刷新打卡页「今日已记录 N 次」计数
+ */
+function refreshTodayCount() {
+  const badge = document.getElementById('todayCount');
+  if (!badge) return;
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+  const count = state.records.filter(r => {
+    const d = new Date(r.timestamp);
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` === todayKey;
+  }).length;
+  badge.textContent = String(count);
 }

@@ -238,4 +238,9 @@ export function switchTab(index) {
       indicator.classList.remove('w-full');
     }
   });
+
+  // 底部导航激活态
+  document.querySelectorAll('.bn-btn, .bn-log').forEach(btn => {
+    btn.classList.toggle('bn-active', parseInt(btn.dataset.index, 10) === index);
+  });
 }

@@ -2,63 +2,132 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#f0fdf4">
     <title>拉屎记录器</title>
     <!-- Font Awesome -->
     <link href="/libs/css/font-awesome.min.css" rel="stylesheet">
     <!-- Chart.js（作为全局 Chart 使用） -->
     <script src="/libs/js/chart.umd.min.js"></script>
 </head>
-<body class="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen">
-    <div class="container mx-auto px-4 py-6 max-w-md">
-        <!-- 头部 -->
-        <header class="text-center mb-4">
-            <h1 class="text-3xl font-bold text-neutral-dark mb-1 flex items-center justify-center">
-                <i class="fa-solid fa-poop text-primary mr-2 animate-bounce-slow"></i>
-                拉屎记录器
-            </h1>
-            <p class="text-gray-600 text-sm">轻松记录您的排便习惯</p>
+<body class="bg-gradient-to-b from-emerald-50 to-lime-100/50 text-neutral-dark">
+    <div class="mobile-shell mx-auto bg-transparent">
+
+        <!-- 顶部栏 -->
+        <header class="flex items-center justify-between px-5 py-3 flex-none">
+            <div class="flex items-center">
+                <span class="w-9 h-9 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center text-white shadow-md">
+                    <i class="fa-solid fa-poop"></i>
+                </span>
+                <div class="ml-2.5 leading-tight">
+                    <span class="block text-base font-bold text-neutral-dark">拉屎记录器</span>
+                    <span class="block text-[11px] text-gray-400">轻松掌握健康节律</span>
+                </div>
+            </div>
+            <button id="settingsBtn" aria-label="设置" class="w-10 h-10 rounded-2xl bg-white/80 border border-emerald-100 flex items-center justify-center text-gray-500 shadow-sm active:scale-95 transition-transform">
+                <i class="fa-solid fa-sliders"></i>
+            </button>
         </header>
 
-        <!-- 标签页导航 -->
-        <div class="flex justify-between items-center mb-4 px-2">
-            <div class="flex-1 text-center">
-                <button class="tab-btn w-full py-4 text-base md:text-lg font-medium relative" data-index="0">
-                    <i class="fa-solid fa-plus-circle mr-1"></i> 添加
-                    <span class="tab-indicator absolute bottom-0 left-0 w-full bg-primary"></span>
-                </button>
-            </div>
-            <div class="flex-1 text-center">
-                <button class="tab-btn w-full py-4 text-base md:text-lg font-medium relative text-gray-500" data-index="1">
-                    <i class="fa-solid fa-list-alt mr-1"></i> 历史
-                    <span class="tab-indicator absolute bottom-0 left-0 w-0 bg-secondary"></span>
-                </button>
-            </div>
-            <div class="flex-1 text-center">
-                <button class="tab-btn w-full py-4 text-base md:text-lg font-medium relative text-gray-500" data-index="2">
-                    <i class="fa-solid fa-chart-line mr-1"></i> 分析
-                    <span class="tab-indicator absolute bottom-0 left-0 w-0 bg-accent"></span>
-                </button>
-            </div>
-        </div>
-
-        <!-- 滑动容器 -->
+        <!-- 滑动内容容器 -->
         <div class="swipe-container touch-feedback">
             <div class="swipe-wrapper">
-                <!-- 添加记录卡片 -->
-                <div class="swipe-card p-2">
-                    <div class="card h-full flex flex-col">
-                        <h2 class="section-title">
-                            <i class="fa-solid fa-plus-circle"></i> 添加记录
-                        </h2>
-                        <form id="recordForm" class="space-y-5 flex-grow">
-                            <div>
-                                <label for="recordTime" class="block text-gray-700 mb-2 font-medium text-lg">时间</label>
-                                <input type="datetime-local" id="recordTime" class="input-field">
+
+                <!-- ========== 卡片 0 · 历史 ========== -->
+                <section class="swipe-card">
+                    <div class="card flex flex-col h-full">
+                        <!-- 标题 + 操作 -->
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="section-title mb-0 flex items-center">
+                                <i class="fa-solid fa-list-ul text-secondary mr-2"></i>历史记录
+                            </h2>
+                            <button id="filterBtn" class="btn-secondary btn-sm">
+                                <i class="fa-solid fa-filter mr-1"></i>筛选
+                            </button>
+                        </div>
+
+                        <!-- 搜索栏 -->
+                        <div class="relative mb-3">
+                            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                            <input type="text" id="searchInput" placeholder="搜索地点或备注…" class="input-field pl-10 pr-16 py-2.5 w-full">
+                            <button id="clearSearchBtn" class="hidden absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 px-3 py-1.5">
+                                <i class="fa-solid fa-times mr-1"></i>清除
+                            </button>
+                        </div>
+
+                        <!-- 筛选面板 -->
+                        <div id="filterContainer" class="hidden bg-neutral rounded-2xl p-4 mb-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label for="startDate" class="block text-gray-600 mb-1.5 text-sm">开始日期</label>
+                                    <input type="date" id="startDate" class="input-field text-sm">
+                                </div>
+                                <div>
+                                    <label for="endDate" class="block text-gray-600 mb-1.5 text-sm">结束日期</label>
+                                    <input type="date" id="endDate" class="input-field text-sm">
+                                </div>
                             </div>
-                            <div>
-                                <label for="location" class="block text-gray-700 mb-2 font-medium text-lg">地点</label>
-                                <div class="flex">
+                            <div class="mt-3 flex justify-end gap-2">
+                                <button id="resetFilterBtn" class="px-4 py-2.5 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-colors text-sm">重置</button>
+                                <button id="applyFilterBtn" class="btn-primary btn-sm">应用</button>
+                            </div>
+                        </div>
+                        <div id="activeFilters" class="hidden bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2.5 mb-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center text-sm font-medium text-emerald-800">
+                                    <i class="fa-solid fa-filter mr-2"></i><span id="filterText"></span>
+                                </div>
+                                <button id="clearFiltersBtn" class="text-emerald-600 hover:text-emerald-800 text-sm font-medium">清除</button>
+                            </div>
+                        </div>
+
+                        <!-- 记录列表 -->
+                        <div id="recordsList" class="flex-grow overflow-y-auto pr-1 space-y-3">
+                            <div class="text-center text-gray-400 py-10" id="emptyState">
+                                <i class="fa-solid fa-poop text-5xl mb-3 text-emerald-300 animate-bounce-slow"></i>
+                                <h3 class="empty-title text-lg font-bold text-neutral-dark mb-1">暂无排便记录</h3>
+                                <p class="empty-desc mb-5 text-sm">点下方「打卡」一键记录今天的第一次</p>
+                                <button class="btn-primary btn-sm mx-auto" data-index="1">
+                                    <i class="fa-solid fa-circle-plus mr-1"></i>去打卡
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========== 卡片 1 · 打卡（默认主页） ========== -->
+                <section class="swipe-card">
+                    <div class="card flex flex-col h-full py-8">
+                        <div class="text-center">
+                            <p class="text-sm font-medium text-emerald-600">每一次被记录的身体信号</p>
+                            <h2 class="text-[22px] font-bold text-neutral-dark mt-1">今天也要记一堆·💩</h2>
+                            <p class="mt-2 text-sm text-gray-400">今日已记录
+                                <span id="todayCount" class="font-bold text-emerald-600">0</span> 次
+                            </p>
+                        </div>
+
+                        <!-- 一键打卡 -->
+                        <div class="flex flex-col items-center justify-center flex-1 my-6">
+                            <button id="bigLogBtn" aria-label="一键打卡" class="big-log rise-in">
+                                <i class="fa-solid fa-circle-plus text-5xl"></i>
+                                <span class="text-3xl font-black tracking-[0.2em] -ml-[0.2em]">打卡</span>
+                            </button>
+                            <p class="mt-6 text-xs text-gray-400">一键记录「现在 · 家里」，快人一步</p>
+                        </div>
+
+                        <!-- 详细记录（默认折叠，保证打卡简单） -->
+                        <details id="detailToggle" class="group">
+                            <summary class="list-none flex items-center justify-center gap-2 py-3 text-sm font-medium text-gray-500 cursor-pointer select-none">
+                                补充时间 / 地点 / 类型 / 备注
+                                <i class="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180"></i>
+                            </summary>
+                            <form id="recordForm" class="space-y-4 mt-2">
+                                <div>
+                                    <label for="recordTime" class="block text-gray-600 mb-1.5 text-sm font-medium">时间</label>
+                                    <input type="datetime-local" id="recordTime" class="input-field">
+                                </div>
+                                <div>
+                                    <label for="location" class="block text-gray-600 mb-1.5 text-sm font-medium">地点</label>
                                     <select id="location" class="input-field">
                                         <option value="家里">家里</option>
                                         <option value="公司">公司</option>
@@ -67,341 +136,239 @@
                                         <option value="其他">其他</option>
                                     </select>
                                 </div>
-                            </div>
-                            <div id="otherLocationContainer" class="hidden">
-                                <label for="otherLocation" class="block text-gray-700 mb-2 font-medium text-lg">其他地点</label>
-                                <input type="text" id="otherLocation" class="input-field" placeholder="请输入地点">
-                            </div>
-                            <div>
-                                <label for="type" class="block text-gray-700 mb-2 font-medium text-lg">类型 (可选)</label>
-                                <select id="type" class="input-field">
-                                    <option value="">请选择类型</option>
-                                    <option value="正常">正常</option>
-                                    <option value="干燥">干燥</option>
-                                    <option value="稀便">稀便</option>
-                                    <option value="腹泻">腹泻</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="notes" class="block text-gray-700 mb-2 font-medium text-lg">备注 (可选)</label>
-                                <textarea id="notes" class="input-field" rows="3" placeholder="添加备注信息"></textarea>
-                            </div>
-                            <button type="submit" class="btn-primary w-full mt-auto">
-                                <i class="fa-solid fa-check mr-2"></i> 记录
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- 记录列表卡片 -->
-                <div class="swipe-card p-2">
-                    <div class="card h-full flex flex-col">
-                        <div class="mb-4">
-                            <!-- 搜索栏 -->
-                            <div class="flex items-center space-x-2 mb-3">
-                                <div class="flex-grow relative">
-                                    <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                                    <input type="text" id="searchInput" placeholder="搜索地点或备注..." class="input-field pl-10 pr-3 py-2 w-full">
-                                </div>
-                                <button id="clearSearchBtn" class="btn-secondary btn-sm hidden">
-                                    <i class="fa-solid fa-times mr-1"></i> 清除搜索
-                                </button>
-                            </div>
-
-                            <!-- 操作按钮 -->
-                            <div class="flex justify-between items-center mb-2">
-                                <h2 class="section-title mb-0">
-                                    <i class="fa-solid fa-list-alt"></i> 历史记录
-                                </h2>
-                                <div class="flex space-x-2 flex-wrap justify-end">
-                                    <button id="filterBtn" class="btn-secondary btn-sm py-3 px-3 text-sm">
-                                        <i class="fa-solid fa-filter mr-1"></i> 筛选
-                                    </button>
-                                    <div id="exportMenu" class="relative">
-                                        <button id="exportBtn" class="btn-accent btn-sm py-3 px-3 text-sm">
-                                            <i class="fa-solid fa-download mr-1"></i> 导出
-                                        </button>
-                                        <div id="exportDropdown" class="hidden absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-100 overflow-hidden z-30">
-                                            <button class="export-opt block w-full text-left px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700" data-format="json">
-                                                <i class="fa-solid fa-file-code mr-2 text-gray-400"></i>JSON 文件
-                                            </button>
-                                            <button class="export-opt block w-full text-left px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700" data-format="csv">
-                                                <i class="fa-solid fa-table mr-2 text-green-500"></i>CSV / Excel
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <button id="importBtn" class="btn-secondary btn-sm py-3 px-3 text-sm">
-                                    <i class="fa-solid fa-upload mr-1"></i> 导入
-                                </button>
-                                <button id="backupBtn" class="btn-secondary btn-sm py-3 px-3 text-sm">
-                                    <i class="fa-solid fa-database mr-1"></i> 备份
-                                </button>
-                                <button id="restoreBtn" class="btn-secondary btn-sm py-3 px-3 text-sm">
-                                    <i class="fa-solid fa-rotate-right mr-1"></i> 恢复
-                                </button>
-                                <button id="settingsBtn" class="btn-secondary btn-sm py-3 px-3 text-sm">
-                                    <i class="fa-solid fa-cog mr-1"></i> 设置
-                                </button>
-                                <input type="file" id="importFile" accept=".json" class="hidden">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 筛选器 -->
-                        <div id="filterContainer" class="hidden bg-neutral rounded-xl p-4 mb-4">
-                            <div class="grid grid-cols-1 gap-4">
-                                <div>
-                                    <label for="startDate" class="block text-gray-700 mb-2 text-base">开始日期</label>
-                                    <input type="date" id="startDate" class="input-field text-base">
+                                <div id="otherLocationContainer" class="hidden">
+                                    <label for="otherLocation" class="block text-gray-600 mb-1.5 text-sm font-medium">其他地点</label>
+                                    <input type="text" id="otherLocation" class="input-field" placeholder="请输入地点">
                                 </div>
                                 <div>
-                                    <label for="endDate" class="block text-gray-700 mb-2 text-base">结束日期</label>
-                                    <input type="date" id="endDate" class="input-field text-base">
+                                    <label for="type" class="block text-gray-600 mb-1.5 text-sm font-medium">类型（可选）</label>
+                                    <select id="type" class="input-field">
+                                        <option value="">请选择类型</option>
+                                        <option value="正常">正常</option>
+                                        <option value="干燥">干燥</option>
+                                        <option value="稀便">稀便</option>
+                                        <option value="腹泻">腹泻</option>
+                                    </select>
                                 </div>
-                            </div>
-                            <div class="mt-4 flex justify-end space-x-2">
-                                <button id="resetFilterBtn" class="px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-base">
-                                    重置
-                                </button>
-                                <button id="applyFilterBtn" class="btn-primary btn-sm">
-                                    应用
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- 筛选条件显示 -->
-                        <div id="activeFilters" class="hidden bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center">
-                                    <i class="fa-solid fa-filter text-blue-500 mr-2"></i>
-                                    <span class="text-sm font-medium text-blue-800">当前筛选条件：</span>
-                                    <span id="filterText" class="text-sm text-blue-700 ml-1"></span>
+                                <div>
+                                    <label for="notes" class="block text-gray-600 mb-1.5 text-sm font-medium">备注（可选）</label>
+                                    <textarea id="notes" class="input-field" rows="3" placeholder="例如：早餐前，比较顺畅"></textarea>
                                 </div>
-                                <button id="clearFiltersBtn" class="text-blue-500 hover:text-blue-700 text-sm font-medium">
-                                    清除筛选
+                                <button type="submit" class="btn-primary w-full">
+                                    <i class="fa-solid fa-check mr-2"></i>保存记录
                                 </button>
-                            </div>
-                        </div>
-
-                        <!-- 记录列表列表 -->
-                        <div id="recordsList" class="flex-grow overflow-y-auto pr-2 space-y-3">
-                            <!-- 记录将通过 JavaScript 动态添加 -->
-                            <div class="text-center text-gray-500 py-8" id="emptyState">
-                                <i class="fa-solid fa-poop text-4xl mb-3 text-primary animate-bounce-slow"></i>
-                                <h3 class="empty-title text-xl font-bold mb-2 text-neutral-dark">暂无排便记录</h3>
-                                <p class="mb-4">点击顶部"添加"标签开始记录您的第一次排便</p>
-                                <button class="btn-primary btn-sm mx-auto" data-index="0">
-                                    <i class="fa-solid fa-plus-circle mr-1"></i> 添加第一条记录
-                                </button>
-                            </div>
-                        </div>
+                            </form>
+                        </details>
                     </div>
-                </div>
+                </section>
 
-                <!-- 趋势分析卡片 -->
-                <div class="swipe-card p-2">
-                    <div class="card h-full flex flex-col">
-                        <h2 class="section-title">
-                            <i class="fa-solid fa-chart-line"></i> 排便趋势分析
+                <!-- ========== 卡片 2 · 统计 ========== -->
+                <section class="swipe-card">
+                    <div class="card flex flex-col h-full">
+                        <h2 class="section-title flex items-center">
+                            <i class="fa-solid fa-chart-line text-accent mr-2"></i>健康分析
                         </h2>
-                        <div class="grid grid-cols-1 gap-4 mb-4">
-                            <div class="bg-neutral rounded-xl p-4 text-center">
-                                <h3 class="text-gray-600 mb-2 text-base">平均间隔</h3>
-                                <p id="avgInterval" class="text-3xl font-bold text-primary">--</p>
-                                <p class="text-gray-500 text-sm">小时/次</p>
+
+                        <!-- 三项概览 -->
+                        <div class="grid grid-cols-3 gap-2.5 mt-4">
+                            <div class="bg-neutral rounded-2xl px-2 py-3 text-center">
+                                <h3 class="text-xs text-gray-500">平均间隔</h3>
+                                <p id="avgInterval" class="text-xl font-bold text-primary mt-1 leading-none">--</p>
+                                <div class="text-[10px] text-gray-400 mt-1">小时/次</div>
                             </div>
-                            <div class="bg-neutral rounded-xl p-4 text-center">
-                                <h3 class="text-gray-600 mb-2 text-lg">本周次数</h3>
-                                <p id="weeklyCount" class="text-3xl font-bold text-secondary">--</p>
-                                <p class="text-gray-500 text-sm">次/周</p>
+                            <div class="bg-neutral rounded-2xl px-2 py-3 text-center">
+                                <h3 class="text-xs text-gray-500">本周</h3>
+                                <p id="weeklyCount" class="text-xl font-bold text-secondary mt-1 leading-none">--</p>
+                                <div class="text-[10px] text-gray-400 mt-1">次/周</div>
                             </div>
-                            <div class="bg-neutral rounded-xl p-4 text-center">
-                                <h3 class="text-gray-600 mb-2 text-lg">常用地点</h3>
-                                <p id="commonLocation" class="text-3xl font-bold text-accent">--</p>
-                                <p class="text-gray-500 text-sm">TOP 1</p>
+                            <div class="bg-neutral rounded-2xl px-2 py-3 text-center">
+                                <h3 class="text-xs text-gray-500">常用地点</h3>
+                                <p id="commonLocation" class="text-xl font-bold text-accent mt-1 leading-none truncate px-0.5">--</p>
+                                <div class="text-[10px] text-gray-400 mt-1">TOP 1</div>
                             </div>
                         </div>
 
-                        <!-- 规律洞察卡片 -->
-                        <div class="bg-white/70 rounded-xl p-4 mb-4 border border-green-100">
-                            <h3 class="text-lg font-bold text-neutral-dark mb-3 flex items-center">
-                                <i class="fa-solid fa-lightbulb text-accent mr-2"></i> 规律洞察
+                        <!-- 规律洞察 -->
+                        <div class="bg-white/80 border border-emerald-100 rounded-2xl p-4 mt-4">
+                            <h3 class="text-base font-bold text-neutral-dark mb-3 flex items-center">
+                                <i class="fa-solid fa-lightbulb text-accent mr-2"></i>规律洞察
                             </h3>
-                            <div class="grid grid-cols-2 gap-3 mb-3">
-                                <div class="bg-neutral rounded-lg p-3 text-center">
-                                    <div class="text-gray-600 mb-1 text-sm">连续记录</div>
-                                    <p id="streakCount" class="text-2xl font-bold text-primary">--</p>
-                                    <div class="text-gray-500 text-xs">天</div>
+                            <div class="grid grid-cols-2 gap-2.5 mb-3">
+                                <div class="bg-neutral rounded-xl py-3 text-center">
+                                    <div class="text-xs text-gray-500">连续记录</div>
+                                    <p id="streakCount" class="text-2xl font-bold text-primary mt-1 leading-none">--</p>
+                                    <div class="text-[10px] text-gray-400 mt-1">天</div>
                                 </div>
-                                <div class="bg-neutral rounded-lg p-3 text-center">
-                                    <div class="text-gray-600 mb-1 text-sm">本周 vs 上周</div>
-                                    <p id="weekCompare" class="text-2xl font-bold text-secondary">--</p>
-                                    <div class="text-gray-500 text-xs"><span id="weekCompareMeta">周对比</span></div>
+                                <div class="bg-neutral rounded-xl py-3 text-center">
+                                    <div class="text-xs text-gray-500">本周 vs 上周</div>
+                                    <p id="weekCompare" class="text-2xl font-bold text-secondary mt-1 leading-none">--</p>
+                                    <div class="text-[10px] text-gray-400 mt-1"><span id="weekCompareMeta">周对比</span></div>
                                 </div>
                             </div>
-                            <div id="regularityBox" class="rounded-lg p-3 text-sm">
+                            <div id="regularityBox" class="rounded-xl px-3 py-2.5 text-sm">
                                 <p id="regularityText" class="text-gray-600">--</p>
                             </div>
                         </div>
 
                         <!-- 图表设置 -->
-                        <div class="mb-4">
-                            <div class="grid grid-cols-2 gap-4">
-                                <!-- 图表类型选择 -->
-                                <div>
-                                    <label class="block text-gray-700 mb-2 text-base">图表类型</label>
-                                    <select id="chartType" class="input-field text-base">
-                                        <option value="line">折线图</option>
-                                        <option value="bar">柱状图</option>
-                                        <option value="pie">饼图（按地点）</option>
-                                    </select>
-                                </div>
-                                <!-- 时间范围选择 -->
-                                <div>
-                                    <label class="block text-gray-700 mb-2 text-base">时间范围</label>
-                                    <select id="timeRange" class="input-field text-base">
-                                        <option value="7">最近7天</option>
-                                        <option value="14" selected>最近14天</option>
-                                        <option value="30">最近30天</option>
-                                        <option value="90">最近90天</option>
-                                        <option value="all">全部</option>
-                                    </select>
-                                </div>
+                        <div class="grid grid-cols-2 gap-3 mt-4">
+                            <div>
+                                <label class="block text-gray-600 mb-1.5 text-sm font-medium">图表类型</label>
+                                <select id="chartType" class="input-field text-sm">
+                                    <option value="line">折线图</option>
+                                    <option value="bar">柱状图</option>
+                                    <option value="pie">饼图（地点）</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-600 mb-1.5 text-sm font-medium">时间范围</label>
+                                <select id="timeRange" class="input-field text-sm">
+                                    <option value="7">最近7天</option>
+                                    <option value="14" selected>最近14天</option>
+                                    <option value="30">最近30天</option>
+                                    <option value="90">最近90天</option>
+                                    <option value="all">全部</option>
+                                </select>
                             </div>
                         </div>
 
-                        <!-- 图表容器 -->
-                        <div class="flex-grow">
+                        <!-- 图表 -->
+                        <div class="flex-grow mt-4">
                             <canvas id="trendChart" height="200"></canvas>
                         </div>
                     </div>
-                </div>
+                </section>
+
             </div>
         </div>
 
-        <!-- 页脚 -->
-    </div>
+        <!-- 底部导航（拇指可达） -->
+        <nav class="bottom-nav">
+            <button class="bn-btn" data-index="0">
+                <span class="bn-icon"><i class="fa-solid fa-list-ul text-lg"></i></span>
+                <span class="text-[11px]">历史</span>
+                <span class="bn-indicator"></span>
+            </button>
+            <button data-index="1" id="navLogBtn" aria-label="打卡" class="bn-log">
+                <i class="fa-solid fa-poop text-xl"></i>
+                <span class="text-[10px] font-bold">打卡</span>
+            </button>
+            <button class="bn-btn" data-index="2">
+                <span class="bn-icon"><i class="fa-solid fa-chart-line text-lg"></i></span>
+                <span class="text-[11px]">统计</span>
+                <span class="bn-indicator"></span>
+            </button>
+        </nav>
 
-    <!-- 设置模态框 -->
-    <div id="settingsModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
-            <h3 class="text-xl font-bold text-neutral-dark mb-4">设置</h3>
-            <div class="space-y-6">
-                <!-- 主题设置 -->
-                <div>
-                    <h4 class="text-lg font-semibold text-neutral-dark mb-3">主题设置</h4>
-                    <div class="space-y-3">
-                        <label class="flex items-center space-x-3 cursor-pointer">
-                            <input type="radio" name="theme" value="light" class="form-radio text-primary" checked>
-                            <span class="text-base">浅色主题</span>
-                        </label>
-                        <label class="flex items-center space-x-3 cursor-pointer">
-                            <input type="radio" name="theme" value="dark" class="form-radio text-primary">
-                            <span class="text-base">深色主题</span>
-                        </label>
-                        <label class="flex items-center space-x-3 cursor-pointer">
-                            <input type="radio" name="theme" value="auto" class="form-radio text-primary">
-                            <span class="text-base">跟随系统</span>
-                        </label>
-                    </div>
+        <!-- 设置：底部抽屉 -->
+        <div id="settingsModal" class="fixed inset-0 bg-black/40 flex items-end z-50 hidden">
+            <div class="bg-white w-full rounded-t-3xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-h-[85vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-neutral-dark">设置</h3>
+                    <button id="cancelSettingsBtn" aria-label="关闭" class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
                 </div>
 
-                <!-- 通知设置 -->
-                <div>
-                    <h4 class="text-lg font-semibold text-neutral-dark mb-3">通知设置</h4>
-                    <div class="space-y-3">
-                        <label class="flex items-center justify-between cursor-pointer">
-                            <span class="text-base">添加记录成功通知</span>
-                            <input type="checkbox" id="notificationAdd" class="form-checkbox text-primary" checked>
-                        </label>
-                        <label class="flex items-center justify-between cursor-pointer">
-                            <span class="text-base">删除记录成功通知</span>
-                            <input type="checkbox" id="notificationDelete" class="form-checkbox text-primary" checked>
-                        </label>
-                        <label class="flex items-center justify-between cursor-pointer">
-                            <span class="text-base">编辑记录成功通知</span>
-                            <input type="checkbox" id="notificationEdit" class="form-checkbox text-primary" checked>
-                        </label>
-                    </div>
+                <!-- 主题 -->
+                <h4 class="text-sm font-semibold text-gray-500 mb-2">外观</h4>
+                <div class="bg-neutral rounded-2xl p-3 mb-4">
+                    <label class="flex items-center justify-between py-1.5 cursor-pointer">
+                        <span class="text-sm">浅色主题</span>
+                        <input type="radio" name="theme" value="light" class="form-radio text-primary">
+                    </label>
+                    <label class="flex items-center justify-between py-1.5 cursor-pointer">
+                        <span class="text-sm">深色主题</span>
+                        <input type="radio" name="theme" value="dark" class="form-radio text-primary">
+                    </label>
+                    <label class="flex items-center justify-between py-1.5 cursor-pointer">
+                        <span class="text-sm">跟随系统</span>
+                        <input type="radio" name="theme" value="auto" class="form-radio text-primary">
+                    </label>
+                </div>
+
+                <!-- 通知 -->
+                <h4 class="text-sm font-semibold text-gray-500 mb-2">提示</h4>
+                <div class="bg-neutral rounded-2xl p-3 mb-4">
+                    <label class="flex items-center justify-between py-1.5 cursor-pointer">
+                        <span class="text-sm">添加成功提示</span>
+                        <input type="checkbox" id="notificationAdd" class="form-checkbox text-primary" checked>
+                    </label>
+                    <label class="flex items-center justify-between py-1.5 cursor-pointer">
+                        <span class="text-sm">删除成功提示</span>
+                        <input type="checkbox" id="notificationDelete" class="form-checkbox text-primary" checked>
+                    </label>
+                    <label class="flex items-center justify-between py-1.5 cursor-pointer">
+                        <span class="text-sm">编辑成功提示</span>
+                        <input type="checkbox" id="notificationEdit" class="form-checkbox text-primary" checked>
+                    </label>
                 </div>
 
                 <!-- 数据管理 -->
-                <div>
-                    <h4 class="text-lg font-semibold text-neutral-dark mb-3">数据管理</h4>
-                    <div class="space-y-3">
-                        <button id="clearAllDataBtn" class="btn-danger w-full text-left px-4 py-2 rounded-lg">
-                            <i class="fa-solid fa-trash mr-2"></i> 清空所有数据
-                        </button>
+                <h4 class="text-sm font-semibold text-gray-500 mb-2">数据</h4>
+                <div class="grid grid-cols-2 gap-2.5 mb-4">
+                    <div id="exportMenu" class="relative">
+                        <button id="exportBtn" class="btn-accent w-full"><i class="fa-solid fa-download mr-1"></i>导出</button>
+                        <div id="exportDropdown" class="hidden absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-30">
+                            <button class="export-opt block w-full text-left px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700" data-format="json">
+                                <i class="fa-solid fa-file-code mr-2 text-gray-400"></i>JSON 文件
+                            </button>
+                            <button class="export-opt block w-full text-left px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700" data-format="csv">
+                                <i class="fa-solid fa-table mr-2 text-emerald-500"></i>CSV / Excel
+                            </button>
+                        </div>
+                    </div>
+                    <button id="importBtn" class="btn-secondary"><i class="fa-solid fa-upload mr-1"></i>导入</button>
+                    <button id="backupBtn" class="btn-secondary"><i class="fa-solid fa-database mr-1"></i>备份</button>
+                    <button id="restoreBtn" class="btn-secondary"><i class="fa-solid fa-rotate-right mr-1"></i>恢复</button>
+                    <button id="clearAllDataBtn" class="btn-danger col-span-2"><i class="fa-solid fa-trash mr-1"></i>清空所有数据</button>
+                </div>
+                <input type="file" id="importFile" accept=".json" class="hidden">
+                <button id="saveSettingsBtn" class="btn-primary w-full">保存设置</button>
+            </div>
+        </div>
+
+        <!-- 确认：底部抽屉 -->
+        <div id="confirmModal" class="fixed inset-0 bg-black/40 flex items-end z-50 hidden">
+            <div class="bg-white w-full rounded-t-3xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+                <div class="flex items-center mb-4">
+                    <i id="confirmIcon" class="fa-solid fa-exclamation-triangle text-3xl text-amber-500 mr-3"></i>
+                    <div>
+                        <h3 id="confirmTitle" class="text-lg font-bold text-neutral-dark">确认操作</h3>
+                        <p id="confirmMessage" class="text-gray-500 text-sm mt-0.5"></p>
                     </div>
                 </div>
-            </div>
-            <div class="flex justify-end space-x-3 mt-6">
-                <button type="button" id="cancelSettingsBtn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
-                    取消
-                </button>
-                <button type="button" id="saveSettingsBtn" class="btn-primary">
-                    保存设置
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 通用确认模态框 -->
-    <div id="confirmModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
-            <div class="flex items-center mb-4">
-                <i id="confirmIcon" class="fa-solid fa-exclamation-triangle text-4xl text-yellow-500 mr-4"></i>
-                <div>
-                    <h3 id="confirmTitle" class="text-xl font-bold text-neutral-dark">确认操作</h3>
-                    <p id="confirmMessage" class="text-gray-600"></p>
+                <div class="flex justify-end gap-3">
+                    <button id="confirmCancelBtn" class="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors">取消</button>
+                    <button id="confirmOkBtn" class="btn-danger">确认</button>
                 </div>
             </div>
-            <div class="flex justify-end space-x-3">
-                <button id="confirmCancelBtn" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors active:scale-95">
-                    取消
-                </button>
-                <button id="confirmOkBtn" class="btn-danger">
-                    确认
-                </button>
-            </div>
         </div>
-    </div>
 
-    <!-- 备份恢复模态框 -->
-    <div id="restoreModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
-            <h3 class="text-xl font-bold text-neutral-dark mb-4">恢复备份</h3>
-            <p class="text-gray-600 mb-4">选择要恢复的备份：</p>
-
-            <!-- 备份列表 -->
-            <div id="backupsList" class="flex-grow overflow-y-auto space-y-2 mb-4">
-                <!-- 备份项将通过JavaScript动态添加 -->
-                <div class="text-center text-gray-500 py-4" id="emptyBackupsState">
-                    <i class="fa-solid fa-database text-4xl mb-2 text-gray-300"></i>
-                    <p>暂无备份</p>
+        <!-- 恢复备份：底部抽屉 -->
+        <div id="restoreModal" class="fixed inset-0 bg-black/40 flex items-end z-50 hidden">
+            <div class="bg-white w-full rounded-t-3xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-h-[85vh] flex flex-col">
+                <h3 class="text-lg font-bold text-neutral-dark mb-1">恢复备份</h3>
+                <p class="text-gray-500 text-sm mb-3">选择要恢复的备份：</p>
+                <div id="backupsList" class="flex-grow overflow-y-auto space-y-2 mb-3">
+                    <div class="text-center text-gray-400 py-6 text-sm" id="emptyBackupsState">
+                        <i class="fa-solid fa-database text-3xl mb-2 text-gray-300"></i>
+                        <p>暂无备份</p>
+                    </div>
                 </div>
-            </div>
-
-            <div class="flex justify-end space-x-3">
-                <button id="cancelRestoreBtn" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors active:scale-95">
-                    取消
-                </button>
+                <button id="cancelRestoreBtn" class="w-full py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors">取消</button>
             </div>
         </div>
-    </div>
 
-    <!-- 快速录入悬浮按钮 -->
-    <button id="fabAddBtn" aria-label="添加记录" class="fixed bottom-6 right-5 w-14 h-14 rounded-full bg-primary text-white shadow-lg flex items-center justify-center z-40 hover:scale-110 active:scale-95 transition-transform">
-        <i class="fa-solid fa-plus text-2xl"></i>
-    </button>
-
-    <!-- 通用提示组件 -->
-    <div id="toast" class="fixed bottom-4 right-4 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50">
-        <div class="flex items-center">
-            <i id="toastIcon" class="mr-2"></i>
-            <span id="toastText"></span>
-            <button id="toastAction" class="hidden ml-4 text-sm font-bold underline whitespace-nowrap">撤销</button>
+        <!-- 通用提示 -->
+        <div id="toast" class="fixed right-4 text-white px-5 py-3 rounded-2xl shadow-lg z-[100] translate-y-20 opacity-0 transition-all duration-300">
+            <div class="flex items-center">
+                <i id="toastIcon" class="mr-2"></i>
+                <span id="toastText"></span>
+                <button id="toastAction" class="hidden ml-4 text-sm font-bold underline whitespace-nowrap">撤销</button>
+            </div>
         </div>
+
     </div>
 
     <!-- Vite 应用入口模块 -->
