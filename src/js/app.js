@@ -45,6 +45,11 @@ import {
   saveSettings,
   clearAllData,
 } from './settings.js';
+import {
+  testCloudConnection,
+  uploadToCloud,
+  downloadFromCloud,
+} from './sync.js';
 
 // ---------- 事件绑定 ----------
 
@@ -80,6 +85,11 @@ function bindEvents() {
   document.getElementById('cancelSettingsBtn').addEventListener('click', closeSettingsModal);
   document.getElementById('settingsModal').addEventListener('click', handleModalOverlayClick);
   document.getElementById('clearAllDataBtn').addEventListener('click', clearAllData);
+
+  // 坚果云同步
+  document.getElementById('syncTestBtn').addEventListener('click', testCloudConnection);
+  document.getElementById('syncUploadBtn').addEventListener('click', uploadToCloud);
+  document.getElementById('syncDownloadBtn').addEventListener('click', downloadFromCloud);
 
   // 图表
   document.getElementById('chartType').addEventListener('change', updateChart);

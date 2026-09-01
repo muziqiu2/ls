@@ -143,3 +143,76 @@ function base64ToBytes(base64) {
   }
   return bytes;
 }
+
+// ---------- 口令派生加密（用于云端数据，跨设备可用同一口令解密） ----------
+// 直接使用 Web Crypto 的 PBKDF2 + AES-GCM，不做简单加密回退，
+// 因为云数据必须真正加密才能安全存放。
+
+const PBKDF2_ITERATIONS = 150000;
+const SALT_LENGTH = 16;
+const CLOUD_IV_LENGTH = 12;
+
+/**
+ * 从口令 + 盐派生 AES-GCM 密钥
+ */
+async function deriveKeyFromPassword(password, salt) {
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+/**
+ * 用口令加密文本，输出格式：salt(16) + iv(12) + ciphertext，整体 Base64。
+ * 只要记住口令，任何设备都能解密。
+ * @returns {Promise<string>}
+ */
+export async function encryptWithPassword(text, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+  const iv = crypto.getRandomValues(new Uint8Array(CLOUD_IV_LENGTH));
+  const key = await deriveKeyFromPassword(password, salt);
+
+  const encryptedData = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    new TextEncoder().encode(text)
+  );
+
+  const combined = new Uint8Array(SALT_LENGTH + CLOUD_IV_LENGTH + encryptedData.byteLength);
+  combined.set(salt, 0);
+  combined.set(iv, SALT_LENGTH);
+  combined.set(new Uint8Array(encryptedData), SALT_LENGTH + CLOUD_IV_LENGTH);
+
+  return bytesToBase64(combined);
+}
+
+/**
+ * 用口令解密（与 encryptWithPassword 对应）
+ * @returns {Promise<string>}
+ */
+export async function decryptWithPassword(encryptedText, password) {
+  const combined = base64ToBytes(encryptedText);
+
+  const salt = combined.slice(0, SALT_LENGTH);
+  const iv = combined.slice(SALT_LENGTH, SALT_LENGTH + CLOUD_IV_LENGTH);
+  const data = combined.slice(SALT_LENGTH + CLOUD_IV_LENGTH);
+
+  const key = await deriveKeyFromPassword(password, salt);
+  const decryptedData = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    data
+  );
+
+  return new TextDecoder().decode(decryptedData);
+}

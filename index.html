@@ -322,6 +322,33 @@
                     </label>
                 </div>
 
+                <!-- 坚果云同步 -->
+                <h4 class="text-sm font-semibold text-gray-500 mb-2">坚果云同步</h4>
+                <div class="bg-neutral rounded-2xl p-3 mb-4 space-y-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">服务器地址</label>
+                        <input type="text" id="syncServer" class="input-field" placeholder="https://dav.jianguoyun.com/dav/">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">坚果云账号</label>
+                        <input type="text" id="syncUsername" class="input-field" placeholder="邮箱地址" autocomplete="username">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">应用密码</label>
+                        <input type="password" id="syncAppPassword" class="input-field" placeholder="坚果云「安全选项」中生成" autocomplete="new-password">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">同步口令（加密云端数据，请记牢）</label>
+                        <input type="password" id="syncPassphrase" class="input-field" placeholder="任意口令，多设备需一致" autocomplete="new-password">
+                    </div>
+                    <p class="text-xs text-gray-400 leading-relaxed">云端文件用你的口令加密，任何设备输入同一口令都能解密。<br>在坚果云网页端新建一个文件夹，把它的 WebDAV 地址填到上面。</p>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <button id="syncTestBtn" type="button" class="btn-secondary col-span-2"><i class="fa-solid fa-plug mr-1"></i>测试连接</button>
+                        <button id="syncUploadBtn" type="button" class="btn-accent"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>上传</button>
+                        <button id="syncDownloadBtn" type="button" class="btn-secondary"><i class="fa-solid fa-cloud-arrow-down mr-1"></i>下载</button>
+                    </div>
+                </div>
+
                 <!-- 数据管理 -->
                 <h4 class="text-sm font-semibold text-gray-500 mb-2">数据</h4>
                 <div class="grid grid-cols-2 gap-2.5 mb-4">

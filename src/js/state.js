@@ -93,6 +93,15 @@ export function initDom() {
   el.saveSettingsBtn = document.getElementById('saveSettingsBtn');
   el.cancelSettingsBtn = document.getElementById('cancelSettingsBtn');
 
+  // 坚果云同步
+  el.syncServer = document.getElementById('syncServer');
+  el.syncUsername = document.getElementById('syncUsername');
+  el.syncAppPassword = document.getElementById('syncAppPassword');
+  el.syncPassphrase = document.getElementById('syncPassphrase');
+  el.syncTestBtn = document.getElementById('syncTestBtn');
+  el.syncUploadBtn = document.getElementById('syncUploadBtn');
+  el.syncDownloadBtn = document.getElementById('syncDownloadBtn');
+
   // 图表设置相关
   el.chartTypeSelect = document.getElementById('chartType');
   el.timeRangeSelect = document.getElementById('timeRange');

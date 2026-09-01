@@ -4,7 +4,7 @@
 import { el, state } from './state.js';
 import { encrypt, decrypt } from './crypto.js';
 import { showToast, showConfirmModal } from './ui.js';
-import { saveRecords } from './storage.js';
+import { saveRecords, clearStoredBackups } from './storage.js';
 import { renderRecords } from './records.js';
 import { updateStatistics } from './stats.js';
 import { updateChart } from './chart.js';
@@ -13,8 +13,19 @@ const SETTINGS_KEY = 'poopSettings';
 
 const DEFAULT_SETTINGS = {
   theme: 'light',
-  notifications: { add: true, delete: true, edit: true }
+  notifications: { add: true, delete: true, edit: true },
+  sync: { server: '', username: '', appPassword: '', passphrase: '' }
 };
+
+// 模块级缓存：加载设置后写入，供同步逻辑读取
+let currentSettings = { ...DEFAULT_SETTINGS, notifications: { ...DEFAULT_SETTINGS.notifications }, sync: { ...DEFAULT_SETTINGS.sync } };
+
+/**
+ * 获取当前设置（同步等模块使用）
+ */
+export function getSettings() {
+  return currentSettings;
+}
 
 /**
  * 打开设置模态框
@@ -43,8 +54,16 @@ export async function saveSettings() {
       add: el.notificationAdd.checked,
       delete: el.notificationDelete.checked,
       edit: el.notificationEdit.checked
+    },
+    sync: {
+      server: el.syncServer.value.trim(),
+      username: el.syncUsername.value.trim(),
+      appPassword: el.syncAppPassword.value.trim(),
+      passphrase: el.syncPassphrase.value.trim()
     }
   };
+
+  currentSettings = settings;
 
   const encryptedSettings = await encrypt(JSON.stringify(settings));
   localStorage.setItem(SETTINGS_KEY, encryptedSettings);
@@ -58,18 +77,25 @@ export async function saveSettings() {
  * 加载用户设置
  */
 export async function loadSettings() {
-  let settings = { ...DEFAULT_SETTINGS, notifications: { ...DEFAULT_SETTINGS.notifications } };
+  let settings = { ...DEFAULT_SETTINGS, notifications: { ...DEFAULT_SETTINGS.notifications }, sync: { ...DEFAULT_SETTINGS.sync } };
 
   try {
     const encryptedSettings = localStorage.getItem(SETTINGS_KEY);
     if (encryptedSettings) {
       const decryptedSettings = await decrypt(encryptedSettings);
       const parsed = JSON.parse(decryptedSettings);
-      settings = { ...settings, ...parsed, notifications: { ...settings.notifications, ...(parsed.notifications || {}) } };
+      settings = {
+        ...settings,
+        ...parsed,
+        notifications: { ...settings.notifications, ...(parsed.notifications || {}) },
+        sync: { ...settings.sync, ...(parsed.sync || {}) }
+      };
     }
   } catch (error) {
     console.error('Failed to load settings:', error);
   }
+
+  currentSettings = settings;
 
   applyTheme(settings.theme);
 
@@ -80,6 +106,12 @@ export async function loadSettings() {
   el.notificationAdd.checked = settings.notifications.add;
   el.notificationDelete.checked = settings.notifications.delete;
   el.notificationEdit.checked = settings.notifications.edit;
+
+  // 坚果云同步配置
+  el.syncServer.value = settings.sync.server;
+  el.syncUsername.value = settings.sync.username;
+  el.syncAppPassword.value = settings.sync.appPassword;
+  el.syncPassphrase.value = settings.sync.passphrase;
 }
 
 /**
@@ -119,7 +151,7 @@ export function clearAllData() {
     onConfirm: async () => {
       state.records = [];
       await saveRecords();
-      localStorage.removeItem('poopBackups');
+      await clearStoredBackups();
 
       renderRecords();
       updateStatistics();
