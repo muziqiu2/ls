@@ -19,12 +19,13 @@
 
 ## 技术栈
 
+- **Vite**：开发服务器与生产构建
 - **HTML5**：页面结构
-- **Tailwind CSS v3**：样式框架
-- **JavaScript (ES6+)**：交互逻辑
+- **Tailwind CSS v3**：样式框架（构建时编译）
+- **JavaScript (ES Modules)**：模块化交互逻辑
 - **Chart.js**：数据可视化
 - **Font Awesome**：图标库
-- **LocalStorage**：本地数据存储
+- **LocalStorage + Web Crypto API (AES-GCM)**：本地数据加密存储
 
 ## 使用方法
 
@@ -57,9 +58,29 @@
 ```
 拉屎记录器/
 ├── index.html          # 主页面文件
-├── styles.css          # 样式文件
-├── script.js           # JavaScript逻辑文件
-└── README.md           # 项目说明文档
+├── vite.config.js      # Vite 构建配置
+├── tailwind.config.js  # Tailwind 主题配置
+├── postcss.config.js   # PostCSS 配置
+├── public/
+│   └── libs/           # 第三方静态资源（Chart.js、Font Awesome 等）
+└── src/
+    ├── main.js         # 应用入口（构建入口）
+    ├── css/
+    │   ├── main.css    # Tailwind 指令 + 自定义 utilities
+    │   └── app.css     # 应用自定义样式
+    └── js/
+        ├── app.js      # 应用初始化 + 事件绑定
+        ├── state.js    # 共享状态与 DOM 引用
+        ├── storage.js  # 数据持久化层（记录/备份）
+        ├── crypto.js   # 加密解密
+        ├── records.js  # 记录管理（表单/列表/筛选/编辑删除）
+        ├── dataio.js   # 数据导入导出/备份恢复
+        ├── stats.js    # 统计信息
+        ├── chart.js    # 趋势图表
+        ├── swipe.js    # 标签切换与滑动
+        ├── settings.js # 设置与主题
+        ├── ui.js       # Toast / 通用确认模态框
+        └── utils.js    # 工具函数
 ```
 
 ## 浏览器兼容性
@@ -71,24 +92,32 @@
 
 ## 开发说明
 
-### 本地运行
+### 环境准备
 
-1. 克隆或下载项目文件
-2. 在项目根目录启动本地服务器：
-   ```bash
-   # 使用Python 3
-   python -m http.server 8000
-   
-   # 或使用Node.js (需要安装http-server)
-   npx http-server -p 8000
-   ```
-3. 在浏览器中访问 `http://localhost:8000`
+```bash
+npm install
+```
+
+### 本地运行（开发模式，支持热更新）
+
+```bash
+npm run dev
+```
+
+访问终端输出的地址（默认 `http://localhost:5173`）。
+
+### 生产构建与预览
+
+```bash
+npm run build      # 构建产物输出到 dist/
+npm run preview    # 本地预览构建产物
+```
 
 ### 代码修改
 
 - 页面结构：修改 `index.html`
-- 样式：修改 `styles.css`
-- 逻辑：修改 `script.js`
+- 样式：修改 `src/css/app.css`；Tailwind 主题在 `tailwind.config.js`
+- 逻辑：按职责修改 `src/js/` 下的模块
 
 ## 隐私说明
 

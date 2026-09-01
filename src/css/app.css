@@ -32,7 +32,9 @@
     width: 100%;
     /* 确保宽度不超过父容器 */
     max-width: 100%;
-    height: calc(100vh - 12rem);
+    /* 移动端新布局：为 顶部栏(3.5rem) + 底部导航(5rem+安全区) 预留高度 */
+    height: calc(100vh - 8.5rem);
+    height: calc(100dvh - 8.5rem);
     /* 支持触摸滑动但允许垂直滚动 */
     touch-action: pan-y;
     -webkit-user-select: none;
@@ -85,13 +87,13 @@
 /* 针对小屏幕设备优化高度 */
 @media (max-height: 600px) {
     .swipe-container {
-        height: calc(100vh - 10rem);
+        height: calc(100vh - 7.5rem);
     }
 }
 
 @media (max-height: 500px) {
     .swipe-container {
-        height: calc(100vh - 8rem);
+        height: calc(100vh - 6.5rem);
     }
 }
 
@@ -117,6 +119,11 @@
     .input-field {
         font-size: 0.875rem !important;
         padding: 0.5rem 0.75rem !important;
+    }
+    /* 搜索框需保留左侧图标与右侧清除按钮的空间，避免窄屏时被上面的 !important 覆盖导致文字与图标重叠 */
+    #searchInput {
+        padding-left: 2.5rem !important;
+        padding-right: 4rem !important;
     }
     .swipe-card > .card {
         padding: 1rem !important;
@@ -220,11 +227,36 @@ button {
    记录列表样式（移动端安全边距）
    ============================================ */
 
+/* 记录卡片：白色实底盖住底层红色删除条（左滑才露出） */
 .record-item {
+    position: relative;
+    overflow: hidden;
     width: 100%;
     box-sizing: border-box;
-    /* 移动端给左右留点呼吸空间 */
     margin-bottom: 0.75rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.875rem;
+    padding: 0; /* 内边距交给 .record-content，保证实底能盖住最右侧红色删除条 */
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.record-item:active { transform: scale(0.98); }
+.record-item:hover { border-color: #4ade80; }
+
+/* 主内容为实底面片，滑动时随手指左移并露出下层红色删除条 */
+.record-content {
+    position: relative;
+    background: #fff;
+    padding: 0.875rem 1rem;
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+/* 行内编辑区：同样实底，避免展开时露出右侧红色删除条 */
+.record-edit {
+    position: relative;
+    background: #fff;
+    padding: 0.75rem 1rem;
 }
 
 #recordsList {
@@ -255,6 +287,13 @@ button {
     font-size: 1rem; /* 避免 iOS 自动缩放 */
     -webkit-appearance: none;
     appearance: none;
+}
+
+/* 搜索框：用 id 级覆盖，保证左侧放大镜与右侧清除按钮都有留白，
+   避免任何视口宽度下双向覆盖类跑偏导致图标与占位文字重叠 */
+#searchInput {
+    padding-left: 2.75rem;
+    padding-right: 4.5rem;
 }
 
 select.input-field {
@@ -311,7 +350,7 @@ textarea.input-field {
     #toast {
         left: 1rem;
         right: 1rem;
-        bottom: 1rem;
+        bottom: calc(5.5rem + env(safe-area-inset-bottom));
         text-align: center;
         max-width: none;
     }
@@ -374,6 +413,11 @@ textarea.input-field {
 .dark .record-item {
     background-color: #374151;
     border-color: #4b5563;
+}
+
+.dark .record-content,
+.dark .record-edit {
+    background-color: #374151;
 }
 
 .dark .record-item:hover {
@@ -627,4 +671,251 @@ canvas {
     -webkit-user-select: none;
     -moz-user-select: none;
     user-select: none;
+}
+
+/* ============================================
+   移动端优先 · 全新布局（重构）
+   ============================================ */
+
+/* 页面根：作为移动 App 全屏承载，禁止页面级滚动 */
+.mobile-shell {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 大屏上居中收窄，模拟移动 App 画布 */
+@media (min-width: 480px) {
+    .mobile-shell {
+        max-width: 27rem;
+        margin: 0 auto;
+        box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.08);
+    }
+}
+
+/* ---- 底部导航 ---- */
+.bottom-nav {
+    flex: none;
+    display: flex;
+    align-items: stretch;
+    background: rgba(255, 255, 255, 0.92);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(16, 185, 129, 0.10);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media (min-width: 480px) {
+    .bottom-nav {
+        border-top: 1px solid rgba(16, 185, 129, 0.10);
+        border-left: 1px solid rgba(16, 185, 129, 0.10);
+        border-right: 1px solid rgba(16, 185, 129, 0.10);
+        border-top-left-radius: 1.25rem;
+        border-top-right-radius: 1.25rem;
+    }
+}
+
+.bn-btn {
+    flex: 1 1 0;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    padding: 0.55rem 0.25rem;
+    color: #94a3b8;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.2s ease, transform 0.15s ease;
+}
+
+.bn-btn:active {
+    transform: scale(0.96);
+}
+
+.bn-icon {
+    width: 1.55rem;
+    height: 1.55rem;
+    display: grid;
+    place-items: center;
+    border-radius: 0.7rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.bn-btn .bn-indicator {
+    position: absolute;
+    top: -0.3rem;
+    left: 50%;
+    transform: translateX(-50%) scaleX(0);
+    height: 3px;
+    width: 1.75rem;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+}
+
+.bn-btn.bn-active { color: #059669; }
+.bn-btn.bn-active .bn-icon { background: rgba(16, 185, 129, 0.12); }
+.bn-btn.bn-active .bn-indicator { transform: translateX(-50%) scaleX(1); opacity: 1; }
+
+/* 中央主打卡按钮 */
+.bn-log {
+    flex: none;
+    width: 4rem;
+    height: 4rem;
+    margin-top: -1.4rem;
+    border-radius: 999px;
+    background: linear-gradient(160deg, #34d399, #059669);
+    box-shadow: 0 10px 24px -8px rgba(5, 150, 105, 0.55);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.1rem;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    border: 4px solid #fff;
+}
+.bn-log:active { transform: scale(0.92); box-shadow: 0 6px 16px -6px rgba(5,150,105,.6); }
+
+/* 打卡页中央大按钮呼吸 */
+@keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35); }
+    70% { box-shadow: 0 0 0 16px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+.big-log {
+    width: 8.5rem;
+    height: 8.5rem;
+    border-radius: 999px;
+    background: linear-gradient(160deg, #34d399, #059669);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    box-shadow: 0 16px 40px -12px rgba(5,150,105,.6);
+    animation: pulse-ring 2.4s cubic-bezier(.22,1,.36,1) infinite;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s ease;
+}
+.big-log:active { transform: scale(0.94); }
+
+/* 打卡成功动效 */
+.big-log.logged {
+    background: linear-gradient(160deg, #a7f3d0, #34d399);
+    animation: none;
+}
+
+/* 录入卡片入场 */
+@keyframes rise-in {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.rise-in { animation: rise-in 0.45s cubic-bezier(.22,1,.36,1) both; }
+
+/* ============================================
+   打卡页「补充时间 / 地点 / 类型 / 备注」折叠表单
+   ============================================ */
+
+/* 补充表单交互：改为“底部抽屉”上拉填写，替代原先内联展开与 <details>。
+   原生 <details> 在卡片被 translateX 移出视口后切回再展开时，部分浏览器
+   无法可靠重算内容高度导致表单不显示；底部抽屉不占用打卡页布局。 */
+
+/* 触发器：做成通栏卡片式的浅色“横条”，点击区 ≥44px */
+.supplement-toggle {
+    width: 100%;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1rem;
+    margin-top: 0.25rem;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px dashed rgba(16, 185, 129, 0.35);
+    color: #6b7280;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.supplement-toggle:active { background: rgba(255, 255, 255, 0.9); }
+.supplement-toggle-icon { color: #34d399; font-size: 0.8rem; }
+.supplement-chevron { color: #10b981; font-size: 0.8rem; }
+
+/* ============================================
+   补充记录：底部抽屉（Bottom Sheet）
+   - 从屏幕底部上滑，不打乱打卡页布局、不压扁中央按钮
+   - 用 visibility+opacity 控制显隐，保证滑入/滑出过渡动画稳定
+   ============================================ */
+#supplementSheet {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+    -webkit-tap-highlight-color: transparent;
+}
+#supplementSheet.is-open {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity 0.3s ease, visibility 0s;
+}
+#supplementSheet .supplement-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+}
+#supplementSheet .supplement-sheet-panel {
+    position: relative;
+    width: 100%;
+    max-width: 28rem;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 1.5rem 1.5rem 0 0;
+    padding: 0.75rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom));
+    max-height: min(82vh, 30rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.15);
+    transform: translateY(100%);
+    transition: transform 0.38s cubic-bezier(.22, 1, .36, 1);
+}
+#supplementSheet.is-open .supplement-sheet-panel { transform: translateY(0); }
+
+/* 顶部拖拽指示条 */
+#supplementSheet .supplement-sheet-handle {
+    width: 2.5rem;
+    height: 0.3125rem;
+    border-radius: 999px;
+    background: #d1d5db;
+    margin: 0 auto 0.75rem;
+}
+
+/* 选项卡内按钮最小点击区 */
+.mobile-shell button, .mobile-shell .input-field, .mobile-shell select {
+    min-height: 44px;
+}
+
+/* 内容区在 flex 中自适应剩余高度（覆盖上方固定 calc 高度） */
+.mobile-shell .swipe-container {
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
 }
