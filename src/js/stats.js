@@ -6,6 +6,19 @@ import { countBy } from './utils.js';
 import { updateInsights } from './insights.js';
 
 /**
+ * 广播「统计口径的数据变了」。
+ * 用事件而不是直接 import AI 模块：stats ← settings ← ai-insights ← stats 会成环，
+ * 而且 AI 卡片只该在数据变化时重算状态，不该由统计模块反向依赖它。
+ */
+function notifyStatsUpdated() {
+  try {
+    window.dispatchEvent(new CustomEvent('stats-updated'));
+  } catch {
+    // 老浏览器不支持 CustomEvent 构造时静默跳过，不影响统计本身
+  }
+}
+
+/**
  * 计算并显示平均间隔、本周次数和常用地点
  */
 export function updateStatistics() {
@@ -13,6 +26,7 @@ export function updateStatistics() {
     el.avgIntervalElement.innerHTML = '<span class="text-gray-400">--</span>';
     el.weeklyCountElement.innerHTML = '<span class="text-gray-400">--</span>';
     el.commonLocationElement.innerHTML = '<span class="text-gray-400">--</span>';
+    notifyStatsUpdated();
     return;
   }
 
@@ -60,4 +74,6 @@ export function updateStatistics() {
 
   // 规律洞察（连续天数 / 周对比 / 健康建议）
   updateInsights();
+
+  notifyStatsUpdated();
 }

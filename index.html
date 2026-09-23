@@ -203,6 +203,32 @@
                         <div class="chart-box mt-3">
                             <canvas id="trendChart" height="200" role="img" aria-label="排便趋势图表"></canvas>
                         </div>
+
+                        <!-- AI 洞察：可选功能，默认关闭；未启用时这里不会发起任何请求。
+                             放在卡片最底部，是为了不把图表挤出首屏 —— 图表是本页的主体。 -->
+                        <div id="aiCard" class="ai-card" aria-labelledby="aiTitle">
+                            <h3 id="aiTitle" class="ai-title">
+                                <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+                                <span>AI 洞察</span>
+                                <span id="aiBadge" class="ai-badge hidden">境内服务</span>
+                            </h3>
+                            <p id="aiIntro" class="ai-intro">未启用。</p>
+                            <div id="aiOutput" class="ai-output hidden" aria-live="polite">
+                                <div id="aiText" class="ai-text"></div>
+                                <span id="aiCaret" class="ai-caret hidden" aria-hidden="true"></span>
+                            </div>
+                            <p id="aiError" class="ai-error hidden" role="alert"></p>
+                            <div class="ai-actions">
+                                <button id="aiGenerateBtn" type="button" class="ai-btn ai-btn-primary hidden">生成洞察</button>
+                                <button id="aiStopBtn" type="button" class="ai-btn ai-btn-ghost hidden">停止</button>
+                                <button id="aiSettingsBtn" type="button" class="ai-btn ai-btn-ghost hidden">去设置</button>
+                            </div>
+                            <p id="aiMeta" class="ai-meta hidden"></p>
+                            <details id="aiPreview" class="ai-preview hidden">
+                                <summary>将发送的内容（不含备注原文）</summary>
+                                <pre id="aiPreviewBody" class="ai-pre"></pre>
+                            </details>
+                        </div>
                     </div>
                 </section>
 
@@ -326,6 +352,47 @@
                     </p>
                 </div>
 
+                <!-- AI 洞察 -->
+                <h4 class="text-sm font-semibold text-gray-600 mb-2">AI 洞察</h4>
+                <div id="aiSettingsSection" class="bg-neutral rounded-2xl p-3 mb-4 space-y-3">
+                    <label class="flex items-center justify-between py-1.5 cursor-pointer">
+                        <span class="text-sm">启用 AI 洞察</span>
+                        <input type="checkbox" id="aiEnabled" class="form-checkbox text-primary">
+                    </label>
+                    <p class="text-xs text-gray-600 leading-relaxed px-0.5">
+                        默认关闭。开启后，点统计页的「生成洞察」才会把你的一小段统计数据发给下面的服务商，
+                        且只发聚合结果，不含备注原文。
+                    </p>
+                    <div>
+                        <label for="aiProvider" class="block text-xs text-gray-600 mb-1">服务商</label>
+                        <select id="aiProvider" class="input-field"></select>
+                        <p id="aiProviderHint" class="text-xs text-gray-600 mt-1.5 leading-relaxed"></p>
+                    </div>
+                    <div>
+                        <label for="aiBaseUrl" class="block text-xs text-gray-600 mb-1">服务地址（OpenAI 兼容）</label>
+                        <input type="text" id="aiBaseUrl" class="input-field" placeholder="https://api.example.com/v1" spellcheck="false">
+                    </div>
+                    <div>
+                        <label for="aiModel" class="block text-xs text-gray-600 mb-1">模型</label>
+                        <input type="text" id="aiModel" class="input-field" list="aiModelList" placeholder="例如 deepseek-chat" spellcheck="false">
+                        <datalist id="aiModelList"></datalist>
+                        <button id="aiFetchModelsBtn" type="button" class="btn-secondary btn-sm w-full mt-2.5">
+                            <i class="fa-solid fa-list mr-1" aria-hidden="true"></i>读取可用模型
+                        </button>
+                    </div>
+                    <div>
+                        <label for="aiApiKey" class="block text-xs text-gray-600 mb-1">API Key</label>
+                        <input type="password" id="aiApiKey" class="input-field" placeholder="sk-…" autocomplete="off" spellcheck="false">
+                        <button id="aiClearKeyBtn" type="button" class="btn-secondary btn-sm w-full mt-2.5">
+                            <i class="fa-solid fa-eraser mr-1" aria-hidden="true"></i>清除密钥
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-600 leading-relaxed">
+                        密钥只保存在本机浏览器，不会随导出文件或坚果云同步外传，换设备需重新填写。
+                        它等同于你账号的调用权限，请使用单独的、额度受限的密钥。
+                    </p>
+                </div>
+
                 <!-- 坚果云同步 -->
                 <h4 class="text-sm font-semibold text-gray-600 mb-2">坚果云同步</h4>
                 <div class="bg-neutral rounded-2xl p-3 mb-4 space-y-3">
@@ -390,6 +457,21 @@
                 <div class="flex justify-end gap-3">
                     <button id="confirmCancelBtn" class="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors">取消</button>
                     <button id="confirmOkBtn" class="btn-danger">确认</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI 知情同意：底部抽屉 -->
+        <div id="aiConsentModal" class="fixed inset-0 bg-black/40 flex items-end z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="aiConsentTitle">
+            <div class="bg-white w-full rounded-t-3xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-h-[85vh] overflow-y-auto">
+                <div class="flex items-center mb-3">
+                    <i class="fa-solid fa-shield-halved text-2xl text-amber-600 mr-3" aria-hidden="true"></i>
+                    <h3 id="aiConsentTitle" class="text-lg font-bold text-neutral-dark">发送前请确认</h3>
+                </div>
+                <div id="aiConsentBody" class="text-sm text-gray-600"></div>
+                <div class="flex justify-end gap-3 mt-4">
+                    <button id="aiConsentCancelBtn" type="button" class="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors">取消</button>
+                    <button id="aiConsentOkBtn" type="button" class="btn-primary">同意并生成</button>
                 </div>
             </div>
         </div>

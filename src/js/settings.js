@@ -8,13 +8,24 @@ import { saveRecords, clearStoredBackups, resetStorageError } from './storage.js
 import { renderRecords } from './records.js';
 import { updateStatistics } from './stats.js';
 import { updateChart, applyChartTheme } from './chart.js';
+import { DEFAULT_PROVIDER, providerHint } from './ai-providers.js';
 
 const SETTINGS_KEY = 'poopSettings';
 
 const DEFAULT_SETTINGS = {
   theme: 'light',
   notifications: { add: true, edit: true },
-  sync: { server: '', username: '', appPassword: '', passphrase: '' }
+  sync: { server: '', username: '', appPassword: '', passphrase: '' },
+  // AI 洞察：默认关闭。enabled 为 true 之前，任何地方都不会发起网络请求。
+  // consentedHost 记录用户已同意发送的域名，换服务商（域名变了）会重新征求同意。
+  ai: {
+    enabled: false,
+    provider: DEFAULT_PROVIDER,
+    baseUrl: '',
+    model: '',
+    apiKey: '',
+    consentedHost: '',
+  },
 };
 
 function createDefaults() {
@@ -22,6 +33,7 @@ function createDefaults() {
     theme: DEFAULT_SETTINGS.theme,
     notifications: { ...DEFAULT_SETTINGS.notifications },
     sync: { ...DEFAULT_SETTINGS.sync },
+    ai: { ...DEFAULT_SETTINGS.ai },
   };
 }
 
@@ -75,6 +87,15 @@ export async function saveSettings() {
       username: el.syncUsername.value.trim(),
       appPassword: el.syncAppPassword.value.trim(),
       passphrase: el.syncPassphrase.value.trim()
+    },
+    ai: {
+      enabled: el.aiEnabled ? el.aiEnabled.checked : false,
+      provider: el.aiProvider ? el.aiProvider.value : DEFAULT_PROVIDER,
+      baseUrl: el.aiBaseUrl ? el.aiBaseUrl.value.trim() : '',
+      model: el.aiModel ? el.aiModel.value.trim() : '',
+      apiKey: el.aiApiKey ? el.aiApiKey.value.trim() : '',
+      // 已经同意过的域名继续保留，避免每次保存设置都要重新确认
+      consentedHost: (currentSettings.ai && currentSettings.ai.consentedHost) || '',
     }
   };
 
@@ -109,7 +130,8 @@ export async function loadSettings() {
         ...settings,
         ...parsed,
         notifications: { ...settings.notifications, ...(parsed.notifications || {}) },
-        sync: { ...settings.sync, ...(parsed.sync || {}) }
+        sync: { ...settings.sync, ...(parsed.sync || {}) },
+        ai: { ...settings.ai, ...(parsed.ai || {}) }
       };
     }
   } catch (error) {
@@ -135,6 +157,34 @@ export async function loadSettings() {
   el.syncUsername.value = settings.sync.username;
   el.syncAppPassword.value = settings.sync.appPassword;
   el.syncPassphrase.value = settings.sync.passphrase;
+
+  // AI 洞察配置
+  if (el.aiEnabled) el.aiEnabled.checked = !!settings.ai.enabled;
+  if (el.aiProvider) {
+    el.aiProvider.value = settings.ai.provider || DEFAULT_PROVIDER;
+    el.aiBaseUrl.value = settings.ai.baseUrl || '';
+    el.aiModel.value = settings.ai.model || '';
+    el.aiApiKey.value = settings.ai.apiKey || '';
+    if (el.aiProviderHint) el.aiProviderHint.textContent = providerHint(el.aiProvider.value);
+    if (el.aiFetchModelsBtn) el.aiFetchModelsBtn.disabled = false;
+  }
+}
+
+/**
+ * 记录用户已同意的 AI 服务域名（知情同意按域名记账）
+ * 只改这一项并立即落盘：同意后马上要发请求，不能等用户再点一次「保存设置」。
+ */
+export async function updateAiConsent(host) {
+  currentSettings = {
+    ...currentSettings,
+    ai: { ...(currentSettings.ai || {}), consentedHost: host || '' },
+  };
+  try {
+    const encrypted = await encrypt(JSON.stringify(currentSettings));
+    localStorage.setItem(SETTINGS_KEY, encrypted);
+  } catch (error) {
+    console.error('保存 AI 同意状态失败：', error);
+  }
 }
 
 /**

@@ -377,14 +377,16 @@ textarea.input-field {
 
 #settingsModal,
 #confirmModal,
-#restoreModal {
+#restoreModal,
+#aiConsentModal {
     padding: 1rem;
     touch-action: manipulation;
 }
 
 #settingsModal > div,
 #confirmModal > div,
-#restoreModal > div {
+#restoreModal > div,
+#aiConsentModal > div {
     max-width: 28rem;
     width: 100%;
     margin: auto;
@@ -393,7 +395,8 @@ textarea.input-field {
 /* 移动端模态框内按钮确保最小点击区域 */
 #settingsModal button,
 #confirmModal button,
-#restoreModal button {
+#restoreModal button,
+#aiConsentModal button {
     min-height: 44px; /* 符合 WCAG 2.5.5 最小点击区域 */
 }
 
@@ -570,8 +573,13 @@ body.dark {
     color: #f9fafb;
 }
 
+/* 浅灰面片在深色下变深灰后必须同时给文字色。
+   否则配 text-gray-700（#374151）用在这里是「深灰字压深灰底」，
+   实测对比度 1:1 —— 确认框 / 恢复备份 / AI 同意弹窗里的「取消」按钮
+   在深色主题下完全是隐形的。 */
 .dark .bg-gray-100 {
     background-color: #374151;
+    color: #f9fafb;
 }
 
 .dark .border-gray-200 {
@@ -587,13 +595,15 @@ body.dark {
 
 .dark #settingsModal,
 .dark #confirmModal,
-.dark #restoreModal {
+.dark #restoreModal,
+.dark #aiConsentModal {
     background-color: rgba(0, 0, 0, 0.75);
 }
 
 .dark #settingsModal .bg-white,
 .dark #confirmModal .bg-white,
-.dark #restoreModal .bg-white {
+.dark #restoreModal .bg-white,
+.dark #aiConsentModal .bg-white {
     background-color: #374151;
     color: #f9fafb;
 }
@@ -1095,10 +1105,384 @@ canvas {
     overflow-wrap: anywhere;
 }
 
+/* ============================================
+   AI 洞察（统计页卡片 / 设置区块 / 知情同意弹窗）
+   --------------------------------------------
+   这里的强调色是紫系，不在品牌绿里，Tailwind 的 .dark 规则覆盖不到，
+   所以浅色与深色成对书写。所有文字色都按 WCAG AA（≥4.5:1）挑过：
+   深色下的正文用 #e5e7eb / #d1d5db 压在 #374151 上（约 7:1），
+   不要用 #9ca3af 之类的中间灰（只有 3.4:1，不达标）。
+   ============================================ */
+
+.ai-card {
+    margin-top: 0.75rem;
+    padding: 0.875rem;
+    border-radius: 1rem;
+    background: #ffffff;
+    border: 1px solid #ddd6fe;
+}
+
+.ai-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #5b21b6;
+}
+
+.ai-badge {
+    margin-left: auto;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    background: #ede9fe;
+    color: #5b21b6;
+}
+
+.ai-badge-warn {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.ai-intro {
+    font-size: 0.8125rem;
+    line-height: 1.65;
+    color: #4b5563;
+}
+
+.ai-output {
+    margin-top: 0.6rem;
+}
+
+/* 流式输出期间是纯文本 + pre-wrap（保留换行）；结束后整体换成富文本节点 */
+.ai-text {
+    font-size: 0.875rem;
+    line-height: 1.75;
+    color: #374151;
+    overflow-wrap: anywhere;
+}
+
+.ai-text.is-streaming {
+    white-space: pre-wrap;
+}
+
+.ai-p {
+    margin: 0 0 0.55rem;
+}
+
+.ai-p:last-child {
+    margin-bottom: 0;
+}
+
+.ai-h {
+    margin: 0.6rem 0 0.35rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #4c1d95;
+}
+
+.ai-list {
+    margin: 0 0 0.6rem;
+    padding-left: 1.15rem;
+    list-style: disc;
+}
+
+.ai-list li {
+    margin-bottom: 0.25rem;
+}
+
+.ai-list li::marker {
+    color: #7c3aed;
+}
+
+.ai-code {
+    padding: 0.05rem 0.3rem;
+    border-radius: 0.25rem;
+    background: #f1f5f9;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8125rem;
+}
+
+.ai-caret {
+    display: inline-block;
+    width: 0.45rem;
+    height: 0.9rem;
+    margin-left: 0.15rem;
+    vertical-align: -0.1rem;
+    background: #7c3aed;
+    animation: ai-blink 1.1s steps(2, start) infinite;
+}
+
+@keyframes ai-blink {
+    to { visibility: hidden; }
+}
+
+.ai-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.ai-actions:empty {
+    display: none;
+}
+
+.ai-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-height: 44px; /* 与全站触控目标一致 */
+    padding: 0 1.1rem;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.ai-btn:active {
+    transform: scale(0.96);
+}
+
+.ai-btn:disabled {
+    opacity: 0.55;
+}
+
+/* 这两个类自带 display，而未分层的 CSS 优先级高于 Tailwind 的 @layer utilities，
+   于是 .hidden（display:none）会被 .ai-btn 的 inline-flex 直接压掉 —— 按钮
+   永远显示不出来「隐藏态」。隐藏规则必须在这里再声明一次。 */
+.ai-btn.hidden,
+.ai-caret.hidden {
+    display: none;
+}
+
+.ai-btn-primary {
+    background: #7c3aed;
+    color: #ffffff;
+}
+
+.ai-btn-primary:hover {
+    background: #6d28d9;
+}
+
+.ai-btn-ghost {
+    background: #f1f5f9;
+    color: #4b5563;
+}
+
+.ai-btn-ghost:hover {
+    background: #e2e8f0;
+}
+
+.ai-error {
+    margin-top: 0.6rem;
+    padding: 0.6rem 0.7rem;
+    border-radius: 0.75rem;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+}
+
+.ai-error:empty {
+    display: none;
+}
+
+.ai-meta {
+    margin-top: 0.6rem;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: #6b7280;
+}
+
+.ai-meta:empty {
+    display: none;
+}
+
+.ai-disclaimer {
+    margin-top: 0.15rem;
+    color: #6b7280;
+}
+
+.ai-preview {
+    margin-top: 0.6rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.ai-preview > summary {
+    display: list-item;
+    cursor: pointer;
+    padding: 0.35rem 0;
+}
+
+.ai-pre,
+.ai-consent-pre {
+    margin-top: 0.4rem;
+    padding: 0.6rem;
+    max-height: 11rem;
+    overflow: auto;
+    border-radius: 0.6rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.6875rem;
+    line-height: 1.55;
+    white-space: pre;
+}
+
+/* ---- 知情同意弹窗 ---- */
+
+.ai-consent-lead {
+    margin-bottom: 0.6rem;
+    line-height: 1.65;
+}
+
+.ai-consent-list {
+    margin: 0 0 0.6rem;
+    padding-left: 1.15rem;
+    list-style: disc;
+    line-height: 1.7;
+}
+
+.ai-consent-fields {
+    margin: 0 0 0.6rem;
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    color: #6b7280;
+}
+
+.ai-consent-warn {
+    margin: 0.4rem 0 0.6rem;
+    padding: 0.55rem 0.7rem;
+    border-radius: 0.7rem;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+    line-height: 1.6;
+}
+
+.ai-consent-detail {
+    margin: 0.4rem 0 0.6rem;
+    font-size: 0.8125rem;
+}
+
+.ai-consent-detail > summary {
+    display: list-item;
+    cursor: pointer;
+    padding: 0.3rem 0;
+    color: #4b5563;
+}
+
+.ai-consent-dim {
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: #6b7280;
+}
+
+/* ---- AI 区块的深色配色 ---- */
+
+.dark .ai-card {
+    background: #374151;
+    border-color: #6d28d9;
+}
+
+.dark .ai-title {
+    color: #c4b5fd;
+}
+
+.dark .ai-badge {
+    background: #4c1d95;
+    color: #ddd6fe;
+}
+
+.dark .ai-badge-warn {
+    background: #78350f;
+    color: #fde68a;
+}
+
+.dark .ai-intro {
+    color: #d1d5db;
+}
+
+.dark .ai-text {
+    color: #e5e7eb;
+}
+
+.dark .ai-h {
+    color: #ddd6fe;
+}
+
+.dark .ai-list li::marker {
+    color: #a78bfa;
+}
+
+.dark .ai-code {
+    background: #1f2937;
+    color: #e5e7eb;
+}
+
+.dark .ai-caret {
+    background: #a78bfa;
+}
+
+.dark .ai-btn-primary {
+    background: #a78bfa;
+    color: #2e1065;
+}
+
+.dark .ai-btn-primary:hover {
+    background: #c4b5fd;
+}
+
+.dark .ai-btn-ghost {
+    background: #4b5563;
+    color: #f9fafb;
+}
+
+.dark .ai-btn-ghost:hover {
+    background: #6b7280;
+}
+
+.dark .ai-error {
+    background: #7f1d1d;
+    border-color: #991b1b;
+    color: #fecaca;
+}
+
+.dark .ai-meta,
+.dark .ai-disclaimer,
+.dark .ai-preview,
+.dark .ai-consent-fields,
+.dark .ai-consent-dim,
+.dark .ai-consent-detail > summary {
+    color: #d1d5db;
+}
+
+.dark .ai-pre,
+.dark .ai-consent-pre {
+    background: #1f2937;
+    border-color: #4b5563;
+    color: #d1d5db;
+}
+
+.dark .ai-consent-warn {
+    background: #78350f;
+    border-color: #92400e;
+    color: #fde68a;
+}
+
 /* 尊重系统的「减少动态效果」偏好 */
 @media (prefers-reduced-motion: reduce) {
     .big-log,
     .rise-in,
+    .ai-caret,
     #emptyState .animate-bounce-slow {
         animation: none !important;
     }

@@ -103,6 +103,39 @@ export function initDom() {
   el.chartTypeSelect = document.getElementById('chartType');
   el.timeRangeSelect = document.getElementById('timeRange');
 
+  // AI 洞察（统计页卡片）
+  el.aiCard = document.getElementById('aiCard');
+  el.aiIntro = document.getElementById('aiIntro');
+  el.aiBadge = document.getElementById('aiBadge');
+  el.aiOutput = document.getElementById('aiOutput');
+  el.aiText = document.getElementById('aiText');
+  el.aiCaret = document.getElementById('aiCaret');
+  el.aiError = document.getElementById('aiError');
+  el.aiMeta = document.getElementById('aiMeta');
+  el.aiPreview = document.getElementById('aiPreview');
+  el.aiPreviewBody = document.getElementById('aiPreviewBody');
+  el.aiGenerateBtn = document.getElementById('aiGenerateBtn');
+  el.aiStopBtn = document.getElementById('aiStopBtn');
+  el.aiSettingsBtn = document.getElementById('aiSettingsBtn');
+
+  // AI 洞察（设置页区块）
+  el.aiSettingsSection = document.getElementById('aiSettingsSection');
+  el.aiEnabled = document.getElementById('aiEnabled');
+  el.aiProvider = document.getElementById('aiProvider');
+  el.aiBaseUrl = document.getElementById('aiBaseUrl');
+  el.aiModel = document.getElementById('aiModel');
+  el.aiApiKey = document.getElementById('aiApiKey');
+  el.aiModelList = document.getElementById('aiModelList');
+  el.aiFetchModelsBtn = document.getElementById('aiFetchModelsBtn');
+  el.aiClearKeyBtn = document.getElementById('aiClearKeyBtn');
+  el.aiProviderHint = document.getElementById('aiProviderHint');
+
+  // AI 洞察（知情同意弹窗）
+  el.aiConsentModal = document.getElementById('aiConsentModal');
+  el.aiConsentBody = document.getElementById('aiConsentBody');
+  el.aiConsentCancelBtn = document.getElementById('aiConsentCancelBtn');
+  el.aiConsentOkBtn = document.getElementById('aiConsentOkBtn');
+
   // 备份恢复相关
   el.restoreBtn = document.getElementById('restoreBtn');
   el.restoreModal = document.getElementById('restoreModal');
