@@ -280,6 +280,18 @@ button {
     font-size: 1rem; /* 避免 iOS 自动缩放 */
     -webkit-appearance: none;
     appearance: none;
+    /* 浅色主题下显式钉死底色与文字色，不依赖 UA 的 Field 系统色：
+       系统为深色时 UA 会把底色填成 #3b3b3b，而文字仍是浅色主题继承下来的
+       #1f2937，深字压深底（实测 1.31:1），下拉框里的文字几乎看不见。 */
+    background-color: #fff;
+    color: #1f2937;
+}
+
+/* 下拉展开的原生列表项同理：不显式指定时，弹层底色跟随系统，
+   文字颜色却继承自 select，深底深字依然看不清。 */
+option {
+    background-color: #fff;
+    color: #1f2937;
 }
 
 /* 搜索框：用 id 级覆盖，保证左侧放大镜与右侧清除按钮都有留白，
@@ -383,6 +395,28 @@ textarea.input-field {
 #confirmModal button,
 #restoreModal button {
     min-height: 44px; /* 符合 WCAG 2.5.5 最小点击区域 */
+}
+
+/* ============================================
+   原生控件的配色跟随「应用主题」，而非「操作系统偏好」
+   ------------------------------------------------------------
+   index.html 里有 <meta name="color-scheme" content="light dark">，
+   浏览器据此认为本页两种配色都支持，于是 select / input 的原生底色改由
+   系统的 prefers-color-scheme 决定，而不再看我们写在 body 上的主题类。
+   于是出现「应用选了浅色主题、系统却是深色」时：
+     · 控件底色 = UA 的 Field 系统色 → #3b3b3b（深）
+     · 文字颜色 = 浅色主题继承下来的 #1f2937（深）
+   深字压深底，实测对比度 1.31:1，下拉框文字基本不可见。
+   把 color-scheme 钉在主题类上，CSS 声明即可压过 meta，原生弹层、
+   日期选择器、滚动条也会跟着应用主题走。
+   ============================================ */
+
+body.light {
+    color-scheme: light;
+}
+
+body.dark {
+    color-scheme: dark;
 }
 
 /* ============================================
@@ -1047,10 +1081,12 @@ canvas {
     justify-content: center;
 }
 
-/* 日期/时间控件的原生图标在深色下默认是黑的，这里做反色 */
-.dark input[type="date"],
-.dark input[type="datetime-local"] {
-    color-scheme: dark;
+/* 深色主题下下拉列表项同步换色。
+   （日期/时间控件的原生图标反色已由上面的 body.dark { color-scheme: dark } 覆盖，
+     它会沿继承链作用到 input[type="date"]，无需再单独声明。） */
+.dark option {
+    background-color: #4b5563;
+    color: #f9fafb;
 }
 
 /* 横向溢出保护：长备注/长地点名不撑破卡片 */

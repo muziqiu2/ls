@@ -162,6 +162,12 @@ export function applyTheme(theme) {
   // 深色下会残留浅绿渐变导致标题看不清 —— 这里显式清掉。
   document.body.style.backgroundImage = isDark ? 'none' : '';
 
+  // 根元素也要声明配色方案。滚动条、日期/时间选择器弹层、页面画布这些由
+  // UA 直接绘制的部分只看根元素的 used color-scheme，不看 body 上的主题类；
+  // 而 index.html 的 <meta name="color-scheme" content="light dark"> 会让
+  // 它们跟着系统偏好走 —— 系统深色 + 应用浅色时，原生弹层会是深色。
+  document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+
   // 状态栏颜色跟随主题（否则深色模式下状态栏仍是浅绿）
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');
   if (themeColorMeta) {
