@@ -1,24 +1,35 @@
 // ==========================================
-// 设置（主题 + 通知）与数据清空
+// 设置（主题 + 提示开关 + 云同步配置）与数据清空
 // ==========================================
 import { el, state } from './state.js';
 import { encrypt, decrypt } from './crypto.js';
-import { showToast, showConfirmModal } from './ui.js';
-import { saveRecords, clearStoredBackups } from './storage.js';
+import { showToast, showConfirmModal, setLayerOpen } from './ui.js';
+import { saveRecords, clearStoredBackups, resetStorageError } from './storage.js';
 import { renderRecords } from './records.js';
 import { updateStatistics } from './stats.js';
-import { updateChart } from './chart.js';
+import { updateChart, applyChartTheme } from './chart.js';
 
 const SETTINGS_KEY = 'poopSettings';
 
 const DEFAULT_SETTINGS = {
   theme: 'light',
-  notifications: { add: true, delete: true, edit: true },
+  notifications: { add: true, edit: true },
   sync: { server: '', username: '', appPassword: '', passphrase: '' }
 };
 
+function createDefaults() {
+  return {
+    theme: DEFAULT_SETTINGS.theme,
+    notifications: { ...DEFAULT_SETTINGS.notifications },
+    sync: { ...DEFAULT_SETTINGS.sync },
+  };
+}
+
 // 模块级缓存：加载设置后写入，供同步逻辑读取
-let currentSettings = { ...DEFAULT_SETTINGS, notifications: { ...DEFAULT_SETTINGS.notifications }, sync: { ...DEFAULT_SETTINGS.sync } };
+let currentSettings = createDefaults();
+
+// 主题对应的状态栏颜色，随主题切换
+const THEME_COLOR = { light: '#f0fdf4', dark: '#1f2937' };
 
 /**
  * 获取当前设置（同步等模块使用）
@@ -33,27 +44,31 @@ export function getSettings() {
 export function openSettingsModal() {
   loadSettings();
   el.settingsModal.classList.remove('hidden');
+  setLayerOpen(true);
 }
 
 /**
  * 关闭设置模态框
  */
 export function closeSettingsModal() {
+  if (el.settingsModal.classList.contains('hidden')) return;
   el.settingsModal.classList.add('hidden');
+  setLayerOpen(false);
 }
 
 /**
  * 保存用户设置
  */
 export async function saveSettings() {
-  const theme = document.querySelector('input[name="theme"]:checked').value;
+  // 单选组可能一个都没选中（例如 HTML 初始未勾选且加载失败），
+  // 直接取 .value 会抛 TypeError，导致「点了没反应」。
+  const checkedTheme = document.querySelector('input[name="theme"]:checked');
 
   const settings = {
-    theme,
+    theme: checkedTheme ? checkedTheme.value : currentSettings.theme,
     notifications: {
-      add: el.notificationAdd.checked,
-      delete: el.notificationDelete.checked,
-      edit: el.notificationEdit.checked
+      add: el.notificationAdd ? el.notificationAdd.checked : true,
+      edit: el.notificationEdit ? el.notificationEdit.checked : true,
     },
     sync: {
       server: el.syncServer.value.trim(),
@@ -64,11 +79,17 @@ export async function saveSettings() {
   };
 
   currentSettings = settings;
+  state.notifications = { ...settings.notifications };
 
-  const encryptedSettings = await encrypt(JSON.stringify(settings));
-  localStorage.setItem(SETTINGS_KEY, encryptedSettings);
+  try {
+    const encryptedSettings = await encrypt(JSON.stringify(settings));
+    localStorage.setItem(SETTINGS_KEY, encryptedSettings);
+  } catch (error) {
+    showToast('设置保存失败：' + error.message, 'error');
+    return;
+  }
 
-  applyTheme(theme);
+  applyTheme(settings.theme);
   showToast('设置已保存！');
   closeSettingsModal();
 }
@@ -77,7 +98,7 @@ export async function saveSettings() {
  * 加载用户设置
  */
 export async function loadSettings() {
-  let settings = { ...DEFAULT_SETTINGS, notifications: { ...DEFAULT_SETTINGS.notifications }, sync: { ...DEFAULT_SETTINGS.sync } };
+  let settings = createDefaults();
 
   try {
     const encryptedSettings = localStorage.getItem(SETTINGS_KEY);
@@ -92,10 +113,13 @@ export async function loadSettings() {
       };
     }
   } catch (error) {
-    console.error('Failed to load settings:', error);
+    // 设置损坏不应导致整页初始化中断（图表、事件绑定都还在后面）
+    console.error('设置加载失败，使用默认值：', error);
+    settings = createDefaults();
   }
 
   currentSettings = settings;
+  state.notifications = { ...settings.notifications };
 
   applyTheme(settings.theme);
 
@@ -103,9 +127,8 @@ export async function loadSettings() {
     radio.checked = radio.value === settings.theme;
   });
 
-  el.notificationAdd.checked = settings.notifications.add;
-  el.notificationDelete.checked = settings.notifications.delete;
-  el.notificationEdit.checked = settings.notifications.edit;
+  if (el.notificationAdd) el.notificationAdd.checked = settings.notifications.add;
+  if (el.notificationEdit) el.notificationEdit.checked = settings.notifications.edit;
 
   // 坚果云同步配置
   el.syncServer.value = settings.sync.server;
@@ -121,21 +144,33 @@ export async function loadSettings() {
 export function applyTheme(theme) {
   document.body.classList.remove('dark', 'light');
 
+  let isDark;
   if (theme === 'dark') {
-    document.body.classList.add('dark');
-    document.body.style.backgroundColor = '#1f2937';
-    document.body.style.color = '#f9fafb';
+    isDark = true;
   } else if (theme === 'light') {
-    document.body.classList.add('light');
-    document.body.style.backgroundColor = '#f0f9ff';
-    document.body.style.color = '#1f2937';
+    isDark = false;
   } else {
     // 跟随系统主题
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    document.body.classList.add(prefersDark ? 'dark' : 'light');
-    document.body.style.backgroundColor = prefersDark ? '#1f2937' : '#f0f9ff';
-    document.body.style.color = prefersDark ? '#f9fafb' : '#1f2937';
+    isDark = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
   }
+
+  document.body.classList.add(isDark ? 'dark' : 'light');
+  document.body.style.backgroundColor = isDark ? '#1f2937' : '#f0f9ff';
+  document.body.style.color = isDark ? '#f9fafb' : '#1f2937';
+
+  // body 上的 Tailwind 渐变是 background-image，只改 background-color 盖不住，
+  // 深色下会残留浅绿渐变导致标题看不清 —— 这里显式清掉。
+  document.body.style.backgroundImage = isDark ? 'none' : '';
+
+  // 状态栏颜色跟随主题（否则深色模式下状态栏仍是浅绿）
+  const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeColorMeta) {
+    themeColorMeta.setAttribute('content', isDark ? THEME_COLOR.dark : THEME_COLOR.light);
+  }
+
+  // 图表的图例 / 刻度 / 网格画在 canvas 里，CSS 的 .dark 规则管不到它们，
+  // 必须显式重绘，否则深色下仍是默认 #666（约 1.8:1）。
+  applyChartTheme();
 }
 
 /**
@@ -150,6 +185,8 @@ export function clearAllData() {
     danger: true,
     onConfirm: async () => {
       state.records = [];
+      // 清空是用户对「数据读不出来」的最终处置手段，需要先解除写入封锁
+      resetStorageError();
       await saveRecords();
       await clearStoredBackups();
 

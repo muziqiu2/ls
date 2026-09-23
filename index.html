@@ -2,8 +2,13 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <!-- 不限制缩放：禁止缩放会违反 WCAG 1.4.4，也会让视力不佳的用户无法放大查看 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#f0fdf4">
+    <meta name="color-scheme" content="light dark">
+    <meta name="description" content="一个纯本地运行的排便记录工具，支持打卡、历史筛选、趋势图表与健康规律分析。">
+    <!-- 内联 SVG 图标：省一次请求，也避免 favicon 404 -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%A9%3C/text%3E%3C/svg%3E">
     <title>拉屎记录器</title>
     <!-- Font Awesome -->
     <link href="/libs/css/font-awesome.min.css" rel="stylesheet">
@@ -21,20 +26,20 @@
                 </span>
                 <div class="ml-2.5 leading-tight">
                     <span class="block text-base font-bold text-neutral-dark">拉屎记录器</span>
-                    <span class="block text-[11px] text-gray-400">轻松掌握健康节律</span>
+                    <span class="block text-[11px] text-gray-600">轻松掌握健康节律</span>
                 </div>
             </div>
-            <button id="settingsBtn" aria-label="设置" class="w-10 h-10 rounded-2xl bg-white/80 border border-emerald-100 flex items-center justify-center text-gray-500 shadow-sm active:scale-95 transition-transform">
+            <button id="settingsBtn" aria-label="设置" class="w-10 h-10 rounded-2xl bg-white/80 border border-emerald-100 flex items-center justify-center text-gray-600 shadow-sm active:scale-95 transition-transform">
                 <i class="fa-solid fa-sliders"></i>
             </button>
         </header>
 
         <!-- 滑动内容容器 -->
-        <div class="swipe-container touch-feedback">
+        <div class="swipe-container touch-feedback" role="main">
             <div class="swipe-wrapper">
 
                 <!-- ========== 卡片 0 · 历史 ========== -->
-                <section class="swipe-card">
+                <section class="swipe-card" aria-label="历史记录">
                     <div class="card flex flex-col h-full">
                         <!-- 标题 + 操作 -->
                         <div class="flex items-center justify-between mb-3">
@@ -48,9 +53,9 @@
 
                         <!-- 搜索栏 -->
                         <div class="relative mb-3">
-                            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-600"></i>
                             <input type="text" id="searchInput" placeholder="搜索地点或备注…" class="input-field pl-10 pr-16 py-2.5 w-full">
-                            <button id="clearSearchBtn" class="hidden absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 px-3 py-1.5">
+                            <button id="clearSearchBtn" class="hidden absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-600 px-3 py-1.5">
                                 <i class="fa-solid fa-times mr-1"></i>清除
                             </button>
                         </div>
@@ -77,13 +82,13 @@
                                 <div class="flex items-center text-sm font-medium text-emerald-800">
                                     <i class="fa-solid fa-filter mr-2"></i><span id="filterText"></span>
                                 </div>
-                                <button id="clearFiltersBtn" class="text-emerald-600 hover:text-emerald-800 text-sm font-medium">清除</button>
+                                <button id="clearFiltersBtn" class="text-emerald-700 hover:text-emerald-800 text-sm font-medium">清除</button>
                             </div>
                         </div>
 
                         <!-- 记录列表 -->
                         <div id="recordsList" class="flex-grow overflow-y-auto pr-1 space-y-3">
-                            <div class="text-center text-gray-400 py-10" id="emptyState">
+                            <div class="text-center text-gray-600 py-10" id="emptyState">
                                 <i class="fa-solid fa-poop text-5xl mb-3 text-emerald-300 animate-bounce-slow"></i>
                                 <h3 class="empty-title text-lg font-bold text-neutral-dark mb-1">暂无排便记录</h3>
                                 <p class="empty-desc mb-5 text-sm">点下方「打卡」一键记录今天的第一次</p>
@@ -96,13 +101,13 @@
                 </section>
 
                 <!-- ========== 卡片 1 · 打卡（默认主页） ========== -->
-                <section class="swipe-card">
+                <section class="swipe-card" aria-label="打卡">
                     <div class="card flex flex-col h-full py-8">
                         <div class="text-center">
-                            <p class="text-sm font-medium text-emerald-600">每一次被记录的身体信号</p>
+                            <p class="text-sm font-medium text-emerald-700">每一次被记录的身体信号</p>
                             <h2 class="text-[22px] font-bold text-neutral-dark mt-1">今天也要记一堆·💩</h2>
-                            <p class="mt-2 text-sm text-gray-400">今日已记录
-                                <span id="todayCount" class="font-bold text-emerald-600">0</span> 次
+                            <p class="mt-2 text-sm text-gray-600">今日已记录
+                                <span id="todayCount" class="font-bold text-emerald-700">0</span> 次
                             </p>
                         </div>
 
@@ -112,7 +117,7 @@
                                 <i class="fa-solid fa-poop text-4xl"></i>
                                 <span class="text-2xl font-extrabold leading-none mt-0.5">打卡</span>
                             </button>
-                            <p class="mt-8 text-xs text-gray-400">一键记录「现在 · 家里」，快人一步</p>
+                            <p class="mt-8 text-xs text-gray-600">一键记录「现在 · 家里」，快人一步</p>
                         </div>
 
                         <!-- 补充详情：点击打开底部抽屉填写 -->
@@ -125,57 +130,57 @@
                 </section>
 
                 <!-- ========== 卡片 2 · 统计 ========== -->
-                <section class="swipe-card">
+                <section class="swipe-card" aria-label="健康分析">
                     <div class="card flex flex-col h-full">
                         <h2 class="section-title flex items-center">
                             <i class="fa-solid fa-chart-line text-accent mr-2"></i>健康分析
                         </h2>
 
                         <!-- 三项概览 -->
-                        <div class="grid grid-cols-3 gap-2.5 mt-4">
+                        <div class="grid grid-cols-3 gap-2.5 mt-3">
                             <div class="bg-neutral rounded-2xl px-2 py-3 text-center">
-                                <h3 class="text-xs text-gray-500">平均间隔</h3>
-                                <p id="avgInterval" class="text-xl font-bold text-primary mt-1 leading-none">--</p>
-                                <div class="text-[10px] text-gray-400 mt-1">小时/次</div>
+                                <h3 class="text-xs text-gray-600">平均间隔</h3>
+                                <p id="avgInterval" class="text-xl font-bold text-primary-dark mt-1 leading-none">--</p>
+                                <div class="text-[11px] text-gray-600 mt-1">小时/次</div>
                             </div>
                             <div class="bg-neutral rounded-2xl px-2 py-3 text-center">
-                                <h3 class="text-xs text-gray-500">本周</h3>
-                                <p id="weeklyCount" class="text-xl font-bold text-secondary mt-1 leading-none">--</p>
-                                <div class="text-[10px] text-gray-400 mt-1">次/周</div>
+                                <h3 class="text-xs text-gray-600">本周</h3>
+                                <p id="weeklyCount" class="text-xl font-bold text-secondary-dark mt-1 leading-none">--</p>
+                                <div class="text-[11px] text-gray-600 mt-1">次/周</div>
                             </div>
                             <div class="bg-neutral rounded-2xl px-2 py-3 text-center">
-                                <h3 class="text-xs text-gray-500">常用地点</h3>
-                                <p id="commonLocation" class="text-xl font-bold text-accent mt-1 leading-none truncate px-0.5">--</p>
-                                <div class="text-[10px] text-gray-400 mt-1">TOP 1</div>
+                                <h3 class="text-xs text-gray-600">常用地点</h3>
+                                <p id="commonLocation" class="text-xl font-bold text-accent-dark mt-1 leading-none truncate px-0.5">--</p>
+                                <div class="text-[11px] text-gray-600 mt-1">TOP 1</div>
                             </div>
                         </div>
 
                         <!-- 规律洞察 -->
-                        <div class="bg-white/80 border border-emerald-100 rounded-2xl p-4 mt-4">
+                        <div class="bg-white/80 border border-emerald-100 rounded-2xl p-3.5 mt-3">
                             <h3 class="text-base font-bold text-neutral-dark mb-3 flex items-center">
-                                <i class="fa-solid fa-lightbulb text-accent mr-2"></i>规律洞察
+                                <i class="fa-solid fa-lightbulb text-accent-dark mr-2" aria-hidden="true"></i>规律洞察
                             </h3>
                             <div class="grid grid-cols-2 gap-2.5 mb-3">
                                 <div class="bg-neutral rounded-xl py-3 text-center">
-                                    <div class="text-xs text-gray-500">连续记录</div>
-                                    <p id="streakCount" class="text-2xl font-bold text-primary mt-1 leading-none">--</p>
-                                    <div class="text-[10px] text-gray-400 mt-1">天</div>
+                                    <div class="text-xs text-gray-600">连续记录</div>
+                                    <p id="streakCount" class="text-2xl font-bold text-primary-dark mt-1 leading-none">--</p>
+                                    <div class="text-[11px] text-gray-600 mt-1">天</div>
                                 </div>
                                 <div class="bg-neutral rounded-xl py-3 text-center">
-                                    <div class="text-xs text-gray-500">本周 vs 上周</div>
-                                    <p id="weekCompare" class="text-2xl font-bold text-secondary mt-1 leading-none">--</p>
-                                    <div class="text-[10px] text-gray-400 mt-1"><span id="weekCompareMeta">周对比</span></div>
+                                    <div class="text-xs text-gray-600">本周 vs 上周</div>
+                                    <p id="weekCompare" class="text-2xl font-bold text-secondary-dark mt-1 leading-none">--</p>
+                                    <div class="text-[11px] text-gray-600 mt-1"><span id="weekCompareMeta">周对比</span></div>
                                 </div>
                             </div>
-                            <div id="regularityBox" class="rounded-xl px-3 py-2.5 text-sm">
+                            <div id="regularityBox" class="regularity-box reg-empty">
                                 <p id="regularityText" class="text-gray-600">--</p>
                             </div>
                         </div>
 
                         <!-- 图表设置 -->
-                        <div class="grid grid-cols-2 gap-3 mt-4">
+                        <div class="grid grid-cols-2 gap-3 mt-3">
                             <div>
-                                <label class="block text-gray-600 mb-1.5 text-sm font-medium">图表类型</label>
+                                <label for="chartType" class="block text-gray-600 mb-1.5 text-sm font-medium">图表类型</label>
                                 <select id="chartType" class="input-field text-sm">
                                     <option value="line">折线图</option>
                                     <option value="bar">柱状图</option>
@@ -183,7 +188,7 @@
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-gray-600 mb-1.5 text-sm font-medium">时间范围</label>
+                                <label for="timeRange" class="block text-gray-600 mb-1.5 text-sm font-medium">时间范围</label>
                                 <select id="timeRange" class="input-field text-sm">
                                     <option value="7">最近7天</option>
                                     <option value="14" selected>最近14天</option>
@@ -195,8 +200,8 @@
                         </div>
 
                         <!-- 图表 -->
-                        <div class="flex-grow mt-4">
-                            <canvas id="trendChart" height="200"></canvas>
+                        <div class="chart-box mt-3">
+                            <canvas id="trendChart" height="200" role="img" aria-label="排便趋势图表"></canvas>
                         </div>
                     </div>
                 </section>
@@ -205,34 +210,34 @@
         </div>
 
         <!-- 底部导航（拇指可达） -->
-        <nav class="bottom-nav">
-            <button class="bn-btn" data-index="0">
-                <span class="bn-icon"><i class="fa-solid fa-list-ul text-lg"></i></span>
-                <span class="text-[11px]">历史</span>
+        <nav class="bottom-nav" aria-label="主导航">
+            <button class="bn-btn" data-index="0" aria-label="历史记录">
+                <span class="bn-icon"><i class="fa-solid fa-list-ul text-lg" aria-hidden="true"></i></span>
+                <span class="text-[12px]">历史</span>
                 <span class="bn-indicator"></span>
             </button>
             <button data-index="1" id="navLogBtn" aria-label="打卡" class="bn-log">
-                <i class="fa-solid fa-poop text-xl"></i>
-                <span class="text-[10px] font-bold">打卡</span>
+                <i class="fa-solid fa-poop text-xl" aria-hidden="true"></i>
+                <span class="text-[11px] font-bold">打卡</span>
             </button>
-            <button class="bn-btn" data-index="2">
-                <span class="bn-icon"><i class="fa-solid fa-chart-line text-lg"></i></span>
-                <span class="text-[11px]">统计</span>
+            <button class="bn-btn" data-index="2" aria-label="健康分析">
+                <span class="bn-icon"><i class="fa-solid fa-chart-line text-lg" aria-hidden="true"></i></span>
+                <span class="text-[12px]">统计</span>
                 <span class="bn-indicator"></span>
             </button>
         </nav>
 
         <!-- 补充记录：底部抽屉 -->
-        <div id="supplementSheet" class="fixed inset-0 z-[70]">
+        <div id="supplementSheet" class="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-labelledby="supplementTitle">
             <div class="supplement-backdrop" data-close-supplement></div>
             <div class="supplement-sheet-panel">
                 <div class="supplement-sheet-handle"></div>
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-bold text-neutral-dark flex items-center">
-                        <i class="fa-solid fa-sliders text-emerald-500 mr-2"></i>补充记录
+                    <h3 id="supplementTitle" class="text-lg font-bold text-neutral-dark flex items-center">
+                        <i class="fa-solid fa-sliders text-emerald-600 mr-2" aria-hidden="true"></i>补充记录
                     </h3>
-                    <button type="button" data-close-supplement aria-label="关闭" class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 active:scale-95 transition-transform">
-                        <i class="fa-solid fa-xmark"></i>
+                    <button type="button" data-close-supplement aria-label="关闭" class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 active:scale-95 transition-transform">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                     </button>
                 </div>
                 <form id="recordForm" class="space-y-4">
@@ -269,7 +274,7 @@
                         <textarea id="notes" class="input-field" rows="3" placeholder="例如：早餐前，比较顺畅"></textarea>
                     </div>
                     <div class="pt-1">
-                        <p class="text-xs text-gray-400 text-center mb-3 leading-relaxed">填写内容将作为本次打卡的内容，<br>确认后在打卡页点「打卡」按钮即可保存</p>
+                        <p class="text-xs text-gray-600 text-center mb-3 leading-relaxed">填写内容将作为本次打卡的内容，<br>确认后在打卡页点「打卡」按钮即可保存</p>
                         <button type="button" data-close-supplement class="btn-primary w-full">
                             <i class="fa-solid fa-check mr-2"></i>确认填写
                         </button>
@@ -279,17 +284,17 @@
         </div>
 
         <!-- 设置：底部抽屉 -->
-        <div id="settingsModal" class="fixed inset-0 bg-black/40 flex items-end z-50 hidden">
+        <div id="settingsModal" class="fixed inset-0 bg-black/40 flex items-end z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
             <div class="bg-white w-full rounded-t-3xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-h-[85vh] overflow-y-auto">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-bold text-neutral-dark">设置</h3>
-                    <button id="cancelSettingsBtn" aria-label="关闭" class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-                        <i class="fa-solid fa-xmark"></i>
+                    <h3 id="settingsTitle" class="text-lg font-bold text-neutral-dark">设置</h3>
+                    <button id="cancelSettingsBtn" aria-label="关闭" class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                     </button>
                 </div>
 
                 <!-- 主题 -->
-                <h4 class="text-sm font-semibold text-gray-500 mb-2">外观</h4>
+                <h4 class="text-sm font-semibold text-gray-600 mb-2">外观</h4>
                 <div class="bg-neutral rounded-2xl p-3 mb-4">
                     <label class="flex items-center justify-between py-1.5 cursor-pointer">
                         <span class="text-sm">浅色主题</span>
@@ -305,68 +310,67 @@
                     </label>
                 </div>
 
-                <!-- 通知 -->
-                <h4 class="text-sm font-semibold text-gray-500 mb-2">提示</h4>
+                <!-- 提示开关 -->
+                <h4 class="text-sm font-semibold text-gray-600 mb-2">提示</h4>
                 <div class="bg-neutral rounded-2xl p-3 mb-4">
                     <label class="flex items-center justify-between py-1.5 cursor-pointer">
-                        <span class="text-sm">添加成功提示</span>
+                        <span class="text-sm">打卡成功反馈</span>
                         <input type="checkbox" id="notificationAdd" class="form-checkbox text-primary" checked>
                     </label>
                     <label class="flex items-center justify-between py-1.5 cursor-pointer">
-                        <span class="text-sm">删除成功提示</span>
-                        <input type="checkbox" id="notificationDelete" class="form-checkbox text-primary" checked>
-                    </label>
-                    <label class="flex items-center justify-between py-1.5 cursor-pointer">
-                        <span class="text-sm">编辑成功提示</span>
+                        <span class="text-sm">编辑保存提示</span>
                         <input type="checkbox" id="notificationEdit" class="form-checkbox text-primary" checked>
                     </label>
+                    <p class="text-xs text-gray-600 leading-relaxed px-0.5 pt-1">
+                        删除后的「撤销」提示始终显示——它是找回误删记录的唯一入口，不随开关关闭。
+                    </p>
                 </div>
 
                 <!-- 坚果云同步 -->
-                <h4 class="text-sm font-semibold text-gray-500 mb-2">坚果云同步</h4>
+                <h4 class="text-sm font-semibold text-gray-600 mb-2">坚果云同步</h4>
                 <div class="bg-neutral rounded-2xl p-3 mb-4 space-y-3">
                     <div>
-                        <label class="block text-xs text-gray-400 mb-1">服务器地址</label>
+                        <label for="syncServer" class="block text-xs text-gray-600 mb-1">服务器地址</label>
                         <input type="text" id="syncServer" class="input-field" placeholder="https://dav.jianguoyun.com/dav/">
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-400 mb-1">坚果云账号</label>
+                        <label for="syncUsername" class="block text-xs text-gray-600 mb-1">坚果云账号</label>
                         <input type="text" id="syncUsername" class="input-field" placeholder="邮箱地址" autocomplete="username">
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-400 mb-1">应用密码</label>
+                        <label for="syncAppPassword" class="block text-xs text-gray-600 mb-1">应用密码</label>
                         <input type="password" id="syncAppPassword" class="input-field" placeholder="坚果云「安全选项」中生成" autocomplete="new-password">
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-400 mb-1">同步口令（加密云端数据，请记牢）</label>
+                        <label for="syncPassphrase" class="block text-xs text-gray-600 mb-1">同步口令（加密云端数据，请记牢）</label>
                         <input type="password" id="syncPassphrase" class="input-field" placeholder="任意口令，多设备需一致" autocomplete="new-password">
                     </div>
-                    <p class="text-xs text-gray-400 leading-relaxed">云端文件用你的口令加密，任何设备输入同一口令都能解密。<br>在坚果云网页端新建一个文件夹，把它的 WebDAV 地址填到上面。</p>
+                    <p class="text-xs text-gray-600 leading-relaxed">云端文件用你的口令加密，任何设备输入同一口令都能解密。<br>在坚果云网页端新建一个文件夹，把它的 WebDAV 地址填到上面。<br>出于账号安全，地址必须是 https；<strong>上传为合并操作</strong>（本地与云端取并集），不会删除云端已有记录。</p>
                     <div class="grid grid-cols-2 gap-2.5">
-                        <button id="syncTestBtn" type="button" class="btn-secondary col-span-2"><i class="fa-solid fa-plug mr-1"></i>测试连接</button>
-                        <button id="syncUploadBtn" type="button" class="btn-accent"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>上传</button>
-                        <button id="syncDownloadBtn" type="button" class="btn-secondary"><i class="fa-solid fa-cloud-arrow-down mr-1"></i>下载</button>
+                        <button id="syncTestBtn" type="button" class="btn-secondary col-span-2"><i class="fa-solid fa-plug mr-1" aria-hidden="true"></i>测试连接</button>
+                        <button id="syncUploadBtn" type="button" class="btn-accent"><i class="fa-solid fa-cloud-arrow-up mr-1" aria-hidden="true"></i>上传</button>
+                        <button id="syncDownloadBtn" type="button" class="btn-secondary"><i class="fa-solid fa-cloud-arrow-down mr-1" aria-hidden="true"></i>下载</button>
                     </div>
                 </div>
 
                 <!-- 数据管理 -->
-                <h4 class="text-sm font-semibold text-gray-500 mb-2">数据</h4>
+                <h4 class="text-sm font-semibold text-gray-600 mb-2">数据</h4>
                 <div class="grid grid-cols-2 gap-2.5 mb-4">
                     <div id="exportMenu" class="relative">
-                        <button id="exportBtn" class="btn-accent w-full"><i class="fa-solid fa-download mr-1"></i>导出</button>
+                        <button id="exportBtn" class="btn-accent w-full" aria-haspopup="true" aria-expanded="false"><i class="fa-solid fa-download mr-1" aria-hidden="true"></i>导出</button>
                         <div id="exportDropdown" class="hidden absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-30">
                             <button class="export-opt block w-full text-left px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700" data-format="json">
-                                <i class="fa-solid fa-file-code mr-2 text-gray-400"></i>JSON 文件
+                                <i class="fa-solid fa-file-code mr-2 text-gray-600" aria-hidden="true"></i>JSON 文件
                             </button>
                             <button class="export-opt block w-full text-left px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700" data-format="csv">
-                                <i class="fa-solid fa-table mr-2 text-emerald-500"></i>CSV / Excel
+                                <i class="fa-solid fa-table mr-2 text-emerald-700" aria-hidden="true"></i>CSV / Excel
                             </button>
                         </div>
                     </div>
-                    <button id="importBtn" class="btn-secondary"><i class="fa-solid fa-upload mr-1"></i>导入</button>
-                    <button id="backupBtn" class="btn-secondary"><i class="fa-solid fa-database mr-1"></i>备份</button>
-                    <button id="restoreBtn" class="btn-secondary"><i class="fa-solid fa-rotate-right mr-1"></i>恢复</button>
-                    <button id="clearAllDataBtn" class="btn-danger col-span-2"><i class="fa-solid fa-trash mr-1"></i>清空所有数据</button>
+                    <button id="importBtn" class="btn-secondary"><i class="fa-solid fa-upload mr-1" aria-hidden="true"></i>导入</button>
+                    <button id="backupBtn" class="btn-secondary"><i class="fa-solid fa-database mr-1" aria-hidden="true"></i>备份</button>
+                    <button id="restoreBtn" class="btn-secondary"><i class="fa-solid fa-rotate-right mr-1" aria-hidden="true"></i>恢复</button>
+                    <button id="clearAllDataBtn" class="btn-danger col-span-2"><i class="fa-solid fa-trash mr-1" aria-hidden="true"></i>清空所有数据</button>
                 </div>
                 <input type="file" id="importFile" accept=".json" class="hidden">
                 <button id="saveSettingsBtn" class="btn-primary w-full">保存设置</button>
@@ -374,13 +378,13 @@
         </div>
 
         <!-- 确认：底部抽屉 -->
-        <div id="confirmModal" class="fixed inset-0 bg-black/40 flex items-end z-50 hidden">
+        <div id="confirmModal" class="fixed inset-0 bg-black/40 flex items-end z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
             <div class="bg-white w-full rounded-t-3xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
                 <div class="flex items-center mb-4">
-                    <i id="confirmIcon" class="fa-solid fa-exclamation-triangle text-3xl text-amber-500 mr-3"></i>
+                    <i id="confirmIcon" class="fa-solid fa-exclamation-triangle text-3xl text-amber-600 mr-3" aria-hidden="true"></i>
                     <div>
                         <h3 id="confirmTitle" class="text-lg font-bold text-neutral-dark">确认操作</h3>
-                        <p id="confirmMessage" class="text-gray-500 text-sm mt-0.5"></p>
+                        <p id="confirmMessage" class="text-gray-600 text-sm mt-0.5"></p>
                     </div>
                 </div>
                 <div class="flex justify-end gap-3">
@@ -391,13 +395,13 @@
         </div>
 
         <!-- 恢复备份：底部抽屉 -->
-        <div id="restoreModal" class="fixed inset-0 bg-black/40 flex items-end z-50 hidden">
+        <div id="restoreModal" class="fixed inset-0 bg-black/40 flex items-end z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="restoreTitle">
             <div class="bg-white w-full rounded-t-3xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-h-[85vh] flex flex-col">
-                <h3 class="text-lg font-bold text-neutral-dark mb-1">恢复备份</h3>
-                <p class="text-gray-500 text-sm mb-3">选择要恢复的备份：</p>
+                <h3 id="restoreTitle" class="text-lg font-bold text-neutral-dark mb-1">恢复备份</h3>
+                <p class="text-gray-600 text-sm mb-3">选择要恢复的备份：</p>
                 <div id="backupsList" class="flex-grow overflow-y-auto space-y-2 mb-3">
-                    <div class="text-center text-gray-400 py-6 text-sm" id="emptyBackupsState">
-                        <i class="fa-solid fa-database text-3xl mb-2 text-gray-300"></i>
+                    <div class="text-center text-gray-600 py-6 text-sm" id="emptyBackupsState">
+                        <i class="fa-solid fa-database text-3xl mb-2 text-gray-300" aria-hidden="true"></i>
                         <p>暂无备份</p>
                     </div>
                 </div>
@@ -406,9 +410,9 @@
         </div>
 
         <!-- 通用提示 -->
-        <div id="toast" class="fixed right-4 text-white px-5 py-3 rounded-2xl shadow-lg z-[100] translate-y-20 opacity-0 transition-all duration-300">
+        <div id="toast" role="status" aria-live="polite" class="fixed right-4 text-white px-5 py-3 rounded-2xl shadow-lg z-[100] translate-y-20 opacity-0 transition-all duration-300">
             <div class="flex items-center">
-                <i id="toastIcon" class="mr-2"></i>
+                <i id="toastIcon" class="mr-2" aria-hidden="true"></i>
                 <span id="toastText"></span>
                 <button id="toastAction" class="hidden ml-4 text-sm font-bold underline whitespace-nowrap">撤销</button>
             </div>

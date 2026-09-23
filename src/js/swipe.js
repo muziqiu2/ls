@@ -17,10 +17,12 @@ let swipeStartTimestamp = 0;
  * 初始化滑动事件：绑定标签按钮点击、触摸事件、鼠标事件和窗口 resize 校正
  */
 export function initSwipeEvents() {
-  // 绑定所有带 data-index 的元素（顶部标签 + 空状态"添加第一条记录"按钮）
+  if (!el.swipeContainer || !el.swipeWrapper) return;
+
+  // 绑定所有带 data-index 的元素（底部导航 + 空状态「去打卡」按钮）
   document.querySelectorAll('[data-index]').forEach(btn => {
     btn.addEventListener('click', () => {
-      switchTab(parseInt(btn.dataset.index));
+      switchTab(parseInt(btn.dataset.index, 10));
     });
   });
 
@@ -228,7 +230,7 @@ function handleMouseUp(e) {
  * @param {number} index 目标标签页索引
  */
 export function switchTab(index) {
-  if (index < 0 || index >= el.swipeCards.length) return;
+  if (!el.swipeWrapper || !el.swipeCards || index < 0 || index >= el.swipeCards.length) return;
 
   state.currentTabIndex = index;
 
@@ -240,25 +242,18 @@ export function switchTab(index) {
     el.swipeWrapper.classList.remove('snap-back');
   }, 400);
 
-  // 更新顶部标签按钮样式与指示器
-  el.tabBtns.forEach((btn, i) => {
-    const indicator = btn.querySelector('.tab-indicator');
-    indicator.classList.remove('bg-primary', 'bg-secondary', 'bg-accent');
-
-    if (i === index) {
-      btn.classList.remove('text-gray-500');
-      indicator.classList.add('w-full');
-      if (i === 0) indicator.classList.add('bg-primary');
-      else if (i === 1) indicator.classList.add('bg-secondary');
-      else if (i === 2) indicator.classList.add('bg-accent');
-    } else {
-      btn.classList.add('text-gray-500');
-      indicator.classList.remove('w-full');
-    }
-  });
-
   // 底部导航激活态
   document.querySelectorAll('.bn-btn, .bn-log').forEach(btn => {
     btn.classList.toggle('bn-active', parseInt(btn.dataset.index, 10) === index);
   });
+
+  // 无障碍：告诉屏幕阅读器当前是哪个页面
+  el.swipeCards.forEach((card, i) => {
+    card.setAttribute('aria-hidden', i === index ? 'false' : 'true');
+  });
+
+  // 切到统计页时让图表按当前容器尺寸重算，避免横向滑动后画布被拉伸
+  if (index === 2 && state.trendChart && typeof state.trendChart.resize === 'function') {
+    requestAnimationFrame(() => state.trendChart.resize());
+  }
 }

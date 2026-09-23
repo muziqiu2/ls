@@ -2,6 +2,7 @@
 // 统计信息（平均间隔 / 本周次数 / 常用地点）
 // ==========================================
 import { el, state } from './state.js';
+import { countBy } from './utils.js';
 import { updateInsights } from './insights.js';
 
 /**
@@ -44,11 +45,7 @@ export function updateStatistics() {
   el.weeklyCountElement.textContent = weeklyRecords.length;
 
   // 常用地点
-  const locationCounts = {};
-  state.records.forEach(record => {
-    const location = record.location;
-    locationCounts[location] = (locationCounts[location] || 0) + 1;
-  });
+  const locationCounts = countBy(state.records, record => record.location);
 
   let maxCount = 0;
   let commonLocation = '--';

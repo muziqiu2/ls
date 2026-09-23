@@ -80,18 +80,31 @@ export async function idbGet(key) {
 
 /**
  * 写入一个键的值
+ * @returns {Promise<boolean>} 是否确实写入成功（IndexedDB 不可用时返回 false，
+ *   交由上层回退到 localStorage；若只默默返回，数据会凭空消失）
  */
 export async function idbSet(key, value) {
   const db = await openDB();
-  if (!db) return;
-  await run('readwrite', store => store.put(value, key));
+  if (!db) return false;
+  try {
+    await run('readwrite', store => store.put(value, key));
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 /**
  * 删除一个键
+ * @returns {Promise<boolean>} 是否确实执行成功
  */
 export async function idbDelete(key) {
   const db = await openDB();
-  if (!db) return;
-  await run('readwrite', store => store.delete(key));
+  if (!db) return false;
+  try {
+    await run('readwrite', store => store.delete(key));
+    return true;
+  } catch (e) {
+    return false;
+  }
 }

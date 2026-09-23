@@ -5,44 +5,78 @@
 
 const IV_LENGTH = 12;
 
+// 密文版本前缀：带前缀 = AES-GCM（当前格式）；不带前缀 = 旧版数据（AES 或 XOR）
+// 有了前缀才能区分「这是旧格式所以解不开」与「密钥不对所以解不开」——
+// 否则密钥错时会被误判成旧数据，用 XOR 解出一串乱码而“看起来成功了”。
+const AES_PREFIX = 'v2:';
+
+/**
+ * 当前环境是否支持 Web Crypto（非安全上下文下 crypto.subtle 为 undefined）
+ */
+export function isCryptoAvailable() {
+  return typeof crypto !== 'undefined' && typeof crypto.subtle !== 'undefined';
+}
+
 /**
  * 使用 Web Crypto API 加密文本
  * @param {string} text 明文
- * @returns {Promise<string>} 合并 IV 后的 Base64 字符串
+ * @returns {Promise<string>} 'v2:' + （IV 合并密文后的 Base64）
  */
 export async function encrypt(text) {
-  try {
-    const key = await getEncryptionKey();
-    const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
-    const encoder = new TextEncoder();
-    const data = encoder.encode(text);
-
-    const encryptedData = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      data
-    );
-
-    // 将 IV 和加密数据合并并转为 Base64
-    const combined = new Uint8Array(iv.length + encryptedData.byteLength);
-    combined.set(iv, 0);
-    combined.set(new Uint8Array(encryptedData), iv.length);
-    return btoa(String.fromCharCode(...combined));
-  } catch (error) {
-    console.warn('Web Crypto API 不可用，使用回退加密方式');
+  if (!isCryptoAvailable()) {
+    console.warn('当前环境不支持 Web Crypto，使用回退加密方式');
     return simpleEncrypt(text);
   }
+
+  const key = await getEncryptionKey();
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+  const data = new TextEncoder().encode(text);
+
+  const encryptedData = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    data
+  );
+
+  // 将 IV 和加密数据合并并转为 Base64
+  const combined = new Uint8Array(iv.length + encryptedData.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(encryptedData), iv.length);
+  return AES_PREFIX + bytesToBase64(combined);
 }
 
 /**
  * 使用 Web Crypto API 解密
- * @param {string} encryptedText Base64 字符串
+ *
+ * - 带 'v2:' 前缀：只走 AES-GCM，解不开就抛错（通常是密钥丢失/不匹配），
+ *   绝不静默降级，避免把乱码当成“成功解密”。
+ * - 不带前缀：旧版本数据，先试 AES 再试 XOR。
+ *
+ * @param {string} encryptedText 密文
  * @returns {Promise<string>} 明文
  */
 export async function decrypt(encryptedText) {
+  if (typeof encryptedText !== 'string' || !encryptedText) {
+    throw new Error('密文为空');
+  }
+
+  const isCurrentFormat = encryptedText.startsWith(AES_PREFIX);
+  const payload = isCurrentFormat ? encryptedText.slice(AES_PREFIX.length) : encryptedText;
+
+  if (!isCryptoAvailable()) {
+    if (isCurrentFormat) {
+      throw new Error('当前环境不支持 Web Crypto，无法解密现有数据');
+    }
+    return simpleDecrypt(payload);
+  }
+
   try {
     const key = await getEncryptionKey();
-    const combined = new Uint8Array(atob(encryptedText).split('').map(c => c.charCodeAt(0)));
+    const combined = base64ToBytes(payload);
+
+    if (combined.length <= IV_LENGTH) {
+      throw new Error('密文长度异常');
+    }
 
     const iv = combined.slice(0, IV_LENGTH);
     const encryptedData = combined.slice(IV_LENGTH);
@@ -55,28 +89,34 @@ export async function decrypt(encryptedText) {
 
     return new TextDecoder().decode(decryptedData);
   } catch (error) {
-    // 解密失败时尝试旧方式（向后兼容旧版本数据）
-    console.warn('新解密方式失败，尝试旧方式:', error.message);
-    return simpleDecrypt(encryptedText);
+    if (isCurrentFormat) {
+      // 当前格式仍然解不开 => 密钥不匹配或数据损坏，必须让上层知道
+      throw new Error(`数据解密失败（密钥不匹配或数据已损坏）：${error.message}`);
+    }
+    // 旧格式兼容路径：AES 解不开时再试 XOR
+    console.warn('旧格式数据 AES 解密失败，尝试 XOR：', error.message);
+    return simpleDecrypt(payload);
   }
 }
 
 /**
  * 获取或生成 AES 密钥（256 位），存储在本机
+ *
+ * 密钥写不进去属于致命错误：若继续用一把“只存在于本次会话”的密钥，
+ * 下次刷新会生成新密钥，旧数据将永远解不开。所以这里直接抛错。
  * @returns {Promise<CryptoKey>}
  */
 async function getEncryptionKey() {
   const storedKey = localStorage.getItem('poopEncryptionKey');
 
   if (storedKey) {
-    const keyMaterial = await crypto.subtle.importKey(
+    return crypto.subtle.importKey(
       'raw',
-      new Uint8Array(atob(storedKey).split('').map(c => c.charCodeAt(0))),
+      base64ToBytes(storedKey),
       { name: 'AES-GCM', length: 256 },
       false,
       ['encrypt', 'decrypt']
     );
-    return keyMaterial;
   }
 
   const key = await crypto.subtle.generateKey(
@@ -86,7 +126,11 @@ async function getEncryptionKey() {
   );
 
   const exportedKey = await crypto.subtle.exportKey('raw', key);
-  localStorage.setItem('poopEncryptionKey', btoa(String.fromCharCode(...new Uint8Array(exportedKey))));
+  try {
+    localStorage.setItem('poopEncryptionKey', bytesToBase64(new Uint8Array(exportedKey)));
+  } catch (e) {
+    throw new Error('无法保存加密密钥（浏览器存储不可写），已中止写入以避免数据无法再读取');
+  }
   return key;
 }
 

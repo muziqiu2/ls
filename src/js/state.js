@@ -5,11 +5,10 @@
 
 export const state = {
   records: [],                // 记录列表
-  currentRecordId: null,      // 当前选中要删除的记录 ID
-  currentEditRecordId: null,  // 当前编辑的记录 ID
   trendChart: null,           // 图表实例
   currentTabIndex: 1,         // 当前标签页索引（0=历史 1=打卡 2=统计，默认进入打卡）
   confirmCallback: null,      // 通用确认模态框回调
+  notifications: { add: true, edit: true }, // 提示开关（由设置页写入，记录模块读取）
 };
 
 // DOM 元素引用容器（initDom 时填充），保证运行时缓存统一
@@ -76,8 +75,7 @@ export function initDom() {
   el.regularityBoxElement = document.getElementById('regularityBox');
   el.regularityTextElement = document.getElementById('regularityText');
 
-  // 标签页与滑动相关
-  el.tabBtns = document.querySelectorAll('.tab-btn');
+  // 滑动容器与卡片
   el.swipeContainer = document.querySelector('.swipe-container');
   el.swipeWrapper = document.querySelector('.swipe-wrapper');
   el.swipeCards = document.querySelectorAll('.swipe-card');
@@ -87,7 +85,6 @@ export function initDom() {
   el.settingsModal = document.getElementById('settingsModal');
   el.themeRadios = document.querySelectorAll('input[name="theme"]');
   el.notificationAdd = document.getElementById('notificationAdd');
-  el.notificationDelete = document.getElementById('notificationDelete');
   el.notificationEdit = document.getElementById('notificationEdit');
   el.clearAllDataBtn = document.getElementById('clearAllDataBtn');
   el.saveSettingsBtn = document.getElementById('saveSettingsBtn');

@@ -2,9 +2,16 @@
 // 记录管理：表单、列表渲染、搜索筛选、行内编辑、滑动删除（带撤销）
 // ==========================================
 import { el, state } from './state.js';
-import { saveRecords } from './storage.js';
-import { formatDate, formatTime, escapeHtml, toDateTimeLocalValue } from './utils.js';
-import { showToast } from './ui.js';
+import { saveRecords, isStorageWritable } from './storage.js';
+import {
+  formatDate,
+  formatTime,
+  escapeHtml,
+  toDateTimeLocalValue,
+  parseLocalDate,
+  debounce,
+} from './utils.js';
+import { showToast, setLayerOpen } from './ui.js';
 import { updateStatistics } from './stats.js';
 import { updateChart } from './chart.js';
 import { switchTab } from './swipe.js';
@@ -15,6 +22,29 @@ const UNDO_WINDOW_MS = 4000;       // 撤销窗口时长（毫秒）
 
 // 待确认（可撤销）删除的记录
 const pendingDeletes = [];
+
+// 记录节点缓存：id -> { element, signature }，避免每次渲染都重建整个列表
+const recordNodes = new Map();
+
+// 当前正在行内编辑的记录 id：渲染时跳过该节点，避免输入到一半被重建清空
+let editingRecordId = null;
+
+/**
+ * 生成记录的内容签名，只有内容变化时才需要重建该条 DOM
+ */
+function recordSignature(record) {
+  return `${record.timestamp}|${record.location}|${record.type || ''}|${record.notes || ''}`;
+}
+
+/**
+ * 创建唯一 id（Date.now() 在快速连点时会碰撞，导致导入/云同步误判为已存在而丢数据）
+ */
+function createId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 // ---------- 表单 ----------
 
@@ -41,14 +71,17 @@ function openSupplement() {
   el.supplementSheet.classList.add('is-open');
   el.supplementToggle.setAttribute('aria-expanded', 'true');
   setCurrentTime(); // 打开时刷新为「现在」，确保用户看到的就是当前时间
+  setLayerOpen(true);
 }
 
 /**
  * 关闭补充记录底部抽屉
  */
 export function closeSupplement() {
+  if (!el.supplementSheet.classList.contains('is-open')) return;
   el.supplementSheet.classList.remove('is-open');
   el.supplementToggle.setAttribute('aria-expanded', 'false');
+  setLayerOpen(false);
 }
 
 /**
@@ -100,6 +133,7 @@ function resetForm() {
  */
 function showSuccessAnimation() {
   const submitBtn = document.getElementById('bigLogBtn');
+  if (!submitBtn) return;
   const originalText = submitBtn.innerHTML;
   submitBtn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> 成功！';
   submitBtn.classList.add('bg-green-500');
@@ -114,7 +148,7 @@ function showSuccessAnimation() {
  * 处理表单提交，添加新记录
  */
 export async function handleFormSubmit(e) {
-  e.preventDefault();
+  if (e && typeof e.preventDefault === 'function') e.preventDefault();
 
   const validationResult = validateForm();
   if (!validationResult.isValid) {
@@ -128,21 +162,26 @@ export async function handleFormSubmit(e) {
   const type = el.typeSelect.value;
   const notes = el.notesInput.value.trim();
 
-  let recordTime;
-  if (el.recordTimeInput.value) {
-    recordTime = new Date(el.recordTimeInput.value).toISOString();
-  } else {
-    recordTime = new Date().toISOString();
-  }
+  const parsedTime = el.recordTimeInput.value ? new Date(el.recordTimeInput.value) : new Date();
+  const recordTime = (isNaN(parsedTime.getTime()) ? new Date() : parsedTime).toISOString();
 
-  const newRecord = { id: Date.now(), timestamp: recordTime, location, type, notes };
+  const newRecord = { id: createId(), timestamp: recordTime, location, type, notes };
 
   state.records.unshift(newRecord);
-  await saveRecords();
+
+  try {
+    await saveRecords();
+  } catch (error) {
+    // 保存失败必须回滚并明确提示，否则界面看起来“点了没反应”，
+    // 而数据只留在内存、刷新即丢。
+    state.records.shift();
+    showToast('保存失败：' + error.message, 'error');
+    return;
+  }
 
   resetForm();
   refreshAfterDataChange();
-  showSuccessAnimation();
+  if (state.notifications.add) showSuccessAnimation();
   setTimeout(closeSupplement, 900); // 先展示“保存成功”，再自动收起抽屉
 }
 
@@ -153,11 +192,13 @@ export async function handleFormSubmit(e) {
  */
 export async function quickLog() {
   const btn = document.getElementById('bigLogBtn');
-  btn.classList.add('logged');
+  if (btn) btn.classList.add('logged');
 
-  await handleFormSubmit({ preventDefault: () => {} });
-
-  setTimeout(() => btn.classList.remove('logged'), 900);
+  try {
+    await handleFormSubmit({ preventDefault: () => {} });
+  } finally {
+    setTimeout(() => { if (btn) btn.classList.remove('logged'); }, 900);
+  }
 }
 
 // ---------- 搜索 / 筛选 ----------
@@ -173,10 +214,7 @@ export function applyFilter() {
 }
 
 export function resetFilter() {
-  el.startDateInput.value = '';
-  el.endDateInput.value = '';
-  renderRecords();
-  updateActiveFilters();
+  clearFilters();
 }
 
 export function handleSearch() {
@@ -184,6 +222,11 @@ export function handleSearch() {
   el.clearSearchBtn.classList.toggle('hidden', !searchTerm);
   renderRecords();
 }
+
+/**
+ * 搜索输入防抖版本（输入期间不重渲染，停止输入 200ms 后才渲染）
+ */
+export const handleSearchDebounced = debounce(handleSearch, 200);
 
 export function clearSearch() {
   el.searchInput.value = '';
@@ -198,7 +241,7 @@ export function clearFilters() {
   updateActiveFilters();
 }
 
-function updateActiveFilters() {
+export function updateActiveFilters() {
   const startDate = el.startDateInput.value;
   const endDate = el.endDateInput.value;
 
@@ -218,27 +261,41 @@ function updateActiveFilters() {
 
 /**
  * 设置默认日期范围（结束为今天，开始为一周前）
+ *
+ * 用 formatDate() 取本地日期——toISOString() 返回 UTC，东八区 00:00–08:00
+ * 之间会取到「昨天」，而清晨正是这个应用的高频使用时段。
+ * 注意：调用方必须在 renderRecords() 之前调用本函数，并随后调用
+ * updateActiveFilters()，否则会出现「列表有数据但筛选条件已生效」的不一致。
  */
 export function setDefaultDates() {
-  el.endDateInput.value = new Date().toISOString().split('T')[0];
+  el.endDateInput.value = formatDate(new Date());
 
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-  el.startDateInput.value = oneWeekAgo.toISOString().split('T')[0];
+  el.startDateInput.value = formatDate(oneWeekAgo);
+
+  updateActiveFilters();
 }
 
 // ---------- 列表渲染 ----------
 
 /**
  * 渲染记录列表（依据筛选与搜索条件）
+ *
+ * 通过 recordNodes 缓存按 id 复用节点：只有内容变化的记录才重建 DOM，
+ * 避免每次输入都全量重建（原先为 O(n²)，且会静默销毁正在编辑的表单）。
  */
 export function renderRecords() {
-  const startDate = el.startDateInput.value ? new Date(el.startDateInput.value) : null;
-  const endDate = el.endDateInput.value ? new Date(el.endDateInput.value) : null;
+  // 日期输入框用 parseLocalDate 解析成本地零点；直接 new Date('2026-09-20')
+  // 会按 UTC 解析成东八区当天 8 点，与归零到本地零点的记录日期比较时
+  // 会把「起始日当天」整体漏掉（结束边界恰好不受影响，所以是单边 bug）。
+  const startDate = parseLocalDate(el.startDateInput.value);
+  const endDate = parseLocalDate(el.endDateInput.value);
   const searchTerm = el.searchInput.value.trim().toLowerCase();
 
   const filteredRecords = state.records.filter(record => {
     const recordDate = new Date(record.timestamp);
+    if (isNaN(recordDate.getTime())) return false;
     recordDate.setHours(0, 0, 0, 0);
 
     const matchesStart = !startDate || recordDate >= startDate;
@@ -253,7 +310,7 @@ export function renderRecords() {
 
   // 空状态（区分「无数据」与「筛选无结果」）
   if (filteredRecords.length === 0) {
-    el.recordsList.innerHTML = '';
+    clearRecordNodes();
 
     const title = el.emptyState.querySelector('.empty-title');
     const desc = el.emptyState.querySelector('.empty-desc');
@@ -275,33 +332,47 @@ export function renderRecords() {
 
   el.emptyState.classList.add('hidden');
 
-  // 增量更新：移除不再需要的记录
-  const newRecordIds = new Set(filteredRecords.map(record => record.id));
-  el.recordsList.querySelectorAll('.record-item').forEach(element => {
-    if (!newRecordIds.has(parseInt(element.dataset.id))) {
-      element.remove();
+  const visibleIds = new Set();
+  const fragment = document.createDocumentFragment();
+
+  filteredRecords.forEach(record => {
+    visibleIds.add(record.id);
+
+    const isEditing = editingRecordId === record.id;
+    const signature = recordSignature(record);
+    const cached = recordNodes.get(record.id);
+
+    // 正在编辑的节点一律复用，避免用户输入到一半被重建清空
+    if (cached && (isEditing || cached.signature === signature)) {
+      fragment.appendChild(cached.element);
+      return;
+    }
+
+    if (cached) cached.element.remove();
+
+    const element = createRecordElement(record);
+    recordNodes.set(record.id, { element, signature });
+    fragment.appendChild(element);
+  });
+
+  // 清理已被筛掉 / 已删除的节点
+  recordNodes.forEach((entry, id) => {
+    if (!visibleIds.has(id)) {
+      entry.element.remove();
+      recordNodes.delete(id);
     }
   });
 
-  // 更新或添加记录
-  filteredRecords.forEach((record, index) => {
-    const existing = el.recordsList.querySelector(`[data-id="${record.id}"]`);
+  el.recordsList.appendChild(fragment);
+}
 
-    if (existing) {
-      existing.replaceWith(createRecordElement(record));
-    } else {
-      const newElement = createRecordElement(record);
-      const nextRecord = filteredRecords[index + 1];
-      const nextElement = nextRecord
-        ? el.recordsList.querySelector(`[data-id="${nextRecord.id}"]`)
-        : null;
-      if (nextElement) {
-        el.recordsList.insertBefore(newElement, nextElement);
-      } else {
-        el.recordsList.appendChild(newElement);
-      }
-    }
-  });
+/**
+ * 清空列表中的所有记录节点（保留空状态元素）
+ */
+function clearRecordNodes() {
+  recordNodes.forEach(entry => entry.element.remove());
+  recordNodes.clear();
+  editingRecordId = null;
 }
 
 /**
@@ -328,18 +399,18 @@ function createRecordElement(record) {
             <span class="text-gray-500 ml-2 text-base">${formattedTime}</span>
           </div>
           <div class="mt-2 flex items-center">
-            <i class="fa-solid fa-map-marker text-secondary mr-2 text-lg"></i>
+            <i class="fa-solid fa-map-marker text-secondary-dark mr-2 text-lg" aria-hidden="true"></i>
             <span class="text-lg">${escapeHtml(record.location)}</span>
           </div>
           ${record.type ? `
             <div class="mt-2 flex items-center">
-              <i class="fa-solid fa-tag text-accent mr-2 text-lg"></i>
+              <i class="fa-solid fa-tag text-accent-dark mr-2 text-lg" aria-hidden="true"></i>
               <span class="text-lg">${escapeHtml(record.type)}</span>
             </div>
           ` : ''}
           ${record.notes ? `
             <div class="mt-2 flex items-start">
-              <i class="fa-solid fa-comment text-gray-400 mr-2 mt-1 text-lg"></i>
+              <i class="fa-solid fa-comment text-gray-500 mr-2 mt-1 text-lg" aria-hidden="true"></i>
               <span class="text-gray-600 text-base">${escapeHtml(record.notes)}</span>
             </div>
           ` : ''}
@@ -395,7 +466,15 @@ function createRecordElement(record) {
   const ieNotes = recordElement.querySelector('.ie-notes');
 
   const isEditOpen = () => !editEl.classList.contains('hidden');
-  const closeEdit = () => editEl.classList.add('hidden');
+  const closeEdit = () => {
+    editEl.classList.add('hidden');
+    if (editingRecordId === record.id) editingRecordId = null;
+  };
+  const openEdit = () => {
+    populateEdit();
+    editEl.classList.remove('hidden');
+    editingRecordId = record.id; // 渲染时跳过该节点，避免编辑内容被清空
+  };
 
   function populateEdit() {
     const d = new Date(record.timestamp);
@@ -417,8 +496,7 @@ function createRecordElement(record) {
     if (isEditOpen()) {
       closeEdit();
     } else {
-      populateEdit();
-      editEl.classList.remove('hidden');
+      openEdit();
     }
   });
 
@@ -444,10 +522,20 @@ function createRecordElement(record) {
     const idx = state.records.findIndex(r => r.id === record.id);
     if (idx === -1) return;
 
-    state.records[idx] = { ...state.records[idx], timestamp, location, type, notes };
-    await saveRecords();
+    const previous = state.records[idx];
+    state.records[idx] = { ...previous, timestamp, location, type, notes };
+
+    try {
+      await saveRecords();
+    } catch (error) {
+      state.records[idx] = previous; // 回滚，避免界面上改了但没落盘
+      showToast('保存失败：' + error.message, 'error');
+      return;
+    }
+
+    closeEdit();
     refreshAfterDataChange();
-    showToast('记录已更新！');
+    if (state.notifications.edit) showToast('记录已更新！');
   });
 
   // ---- 删除逻辑（按钮 + 左滑均走可撤销删删） ----
@@ -541,7 +629,11 @@ function triggerDeleteWithUndo(record) {
       const i = pendingDeletes.findIndex(p => p.record.id === record.id);
       if (i !== -1) {
         pendingDeletes.splice(i, 1);
-        await saveRecords(); // 撤销窗口结束，真正保存
+        try {
+          await saveRecords(); // 撤销窗口结束，真正保存
+        } catch (error) {
+          showToast('删除未能保存：' + error.message, 'error');
+        }
       }
     }, UNDO_WINDOW_MS)
   });
@@ -595,14 +687,16 @@ function refreshAfterDataChange() {
 
 /**
  * 刷新打卡页「今日已记录 N 次」计数
+ * 必须在 init() 中调用，否则打开页面会一直显示 HTML 里硬编码的 0。
  */
-function refreshTodayCount() {
+export function refreshTodayCount() {
   const badge = document.getElementById('todayCount');
   if (!badge) return;
   const now = new Date();
   const todayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
   const count = state.records.filter(r => {
     const d = new Date(r.timestamp);
+    if (isNaN(d.getTime())) return false;
     return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` === todayKey;
   }).length;
   badge.textContent = String(count);

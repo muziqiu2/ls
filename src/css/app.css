@@ -80,6 +80,23 @@
     overflow: visible;
 }
 
+/* ---- 统计页图表容器 ----
+   原来是 flex-grow，但 flex 项默认 min-height:auto，等于 canvas 的固有高度 200px，
+   所以装不下时它不肯收缩 → 整张卡片溢出 ~20px，x 轴日期标签正好落在屏幕外，
+   首屏看图表像是没有坐标。这里允许收缩，图表就能自适应剩余高度，标签始终可见。 */
+.chart-box {
+    flex: 1 1 auto;
+    min-height: 152px;   /* 兜底：内容再多也不把图表压成一条线 */
+    max-height: 280px;   /* 兜底：大屏上不至于把图表拉得过高 */
+    /* 中央「打卡」按钮用 margin-top 负值凸出底部导航 1.4rem，
+       若不留白，凸起部分会正好压住 x 轴中间那个日期标签。
+       这里让出同等高度（Chart.js 会从父容器 content box 取尺寸，会自动减掉 padding）。 */
+    padding-bottom: 1.4rem;
+    box-sizing: border-box;
+    /* 让 Chart.js 能拿到明确的容器尺寸（不要用 !important 覆盖 canvas 行内样式） */
+    position: relative;
+}
+
 /* ============================================
    移动端响应式调整（小屏幕）
    ============================================ */
@@ -99,13 +116,6 @@
 
 /* 超窄屏（<375px）：缩小按钮和字号 */
 @media (max-width: 374px) {
-    header h1 {
-        font-size: 1.5rem !important;
-    }
-    .tab-btn {
-        font-size: 0.875rem !important;
-        padding: 0.625rem 0 !important;
-    }
     .btn-primary,
     .btn-secondary,
     .btn-accent,
@@ -135,15 +145,14 @@
     .swipe-card > .card {
         padding: 1rem !important;
     }
-    .tab-btn {
-        font-size: 0.9375rem !important;
-    }
 }
 
-/* 竖屏手机安全区适配（带刘海屏/底部条） */
+/* 竖屏手机安全区适配（带刘海屏/底部条）
+   注意：底部安全区由 .bottom-nav 的 padding-bottom 统一处理，
+   这里再给 .swipe-container 加内边距会导致底部多出一块空白。 */
 @supports (padding: env(safe-area-inset-top)) {
-    .swipe-container {
-        padding-bottom: env(safe-area-inset-bottom);
+    .mobile-shell header {
+        padding-top: calc(0.75rem + env(safe-area-inset-top));
     }
 }
 
@@ -205,22 +214,6 @@ button {
 /* 防止用户选中文字干扰滑动 */
 .swipe-container * {
     -webkit-user-drag: none;
-}
-
-/* ============================================
-   标签按钮样式优化
-   ============================================ */
-
-.tab-btn {
-    cursor: pointer;
-    outline: none;
-    transition: color 0.2s ease;
-}
-
-.tab-indicator {
-    height: 3px;
-    border-radius: 2px 2px 0 0;
-    transition: width 0.3s ease, background-color 0.2s ease;
 }
 
 /* ============================================
@@ -341,11 +334,21 @@ textarea.input-field {
     font-weight: 500;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
     transform: translateY(0);
-    transition: transform 0.3s ease, opacity 0.3s ease;
+    transition: transform 0.3s ease, opacity 0.3s ease, visibility 0s linear 0.3s;
     max-width: calc(100% - 3rem);
+    /* 收起状态：translate-y-20 会把它挪到与底部导航重叠的位置，
+       若不关掉命中测试，这个「看不见的」提示会吞掉导航按钮的点击。 */
+    visibility: hidden;
+    pointer-events: none;
 }
 
-/* 移动端 toast 居中且宽度更宽 */
+#toast:not(.opacity-0) {
+    visibility: visible;
+    pointer-events: auto;
+    transition: transform 0.3s ease, opacity 0.3s ease, visibility 0s;
+}
+
+/* 移动端 toast 居中且宽度更宽；同时抬高到导航栏之上，避免遮挡 */
 @media (max-width: 480px) {
     #toast {
         left: 1rem;
@@ -360,8 +363,6 @@ textarea.input-field {
    模态框移动端优化
    ============================================ */
 
-#deleteModal,
-#editModal,
 #settingsModal,
 #confirmModal,
 #restoreModal {
@@ -369,8 +370,6 @@ textarea.input-field {
     touch-action: manipulation;
 }
 
-#deleteModal > div,
-#editModal > div,
 #settingsModal > div,
 #confirmModal > div,
 #restoreModal > div {
@@ -380,8 +379,6 @@ textarea.input-field {
 }
 
 /* 移动端模态框内按钮确保最小点击区域 */
-#deleteModal button,
-#editModal button,
 #settingsModal button,
 #confirmModal button,
 #restoreModal button {
@@ -395,6 +392,8 @@ textarea.input-field {
 .dark {
     background-color: #1f2937;
     color: #f9fafb;
+    /* body 上的浅绿渐变是 background-image，只改 background-color 盖不住 */
+    background-image: none;
 }
 
 .dark .swipe-container {
@@ -484,16 +483,8 @@ textarea.input-field {
     background-color: #4b5563;
 }
 
-.dark .tab-btn {
-    color: #9ca3af;
-}
-
-.dark .tab-btn:not(.text-gray-500) {
-    color: #f9fafb;
-}
-
 .dark .text-gray-500 {
-    color: #9ca3af;
+    color: #d1d5db;
 }
 
 .dark .text-neutral-dark {
@@ -505,7 +496,7 @@ textarea.input-field {
 }
 
 .dark .text-gray-400 {
-    color: #9ca3af;
+    color: #d1d5db;
 }
 
 .dark .bg-neutral {
@@ -557,30 +548,20 @@ textarea.input-field {
     border-color: #6b7280;
 }
 
-.dark #toast {
-    background-color: #374151;
-    border: 1px solid #4b5563;
-}
+/* Toast 的背景色由 JS 按类型写为行内样式（行内优先级更高），
+   深色模式下无需再覆盖，否则只是一条永远不生效的死规则。 */
 
-.dark #deleteModal,
-.dark #editModal,
 .dark #settingsModal,
 .dark #confirmModal,
 .dark #restoreModal {
     background-color: rgba(0, 0, 0, 0.75);
 }
 
-.dark #deleteModal .bg-white,
-.dark #editModal .bg-white,
 .dark #settingsModal .bg-white,
 .dark #confirmModal .bg-white,
 .dark #restoreModal .bg-white {
     background-color: #374151;
     color: #f9fafb;
-}
-
-.dark #deleteRecordInfo {
-    background-color: #4b5563;
 }
 
 .dark #activeFilters {
@@ -726,7 +707,8 @@ canvas {
     justify-content: center;
     gap: 0.15rem;
     padding: 0.55rem 0.25rem;
-    color: #94a3b8;
+    /* 11px 小字需要 ≥4.5:1；#94a3b8 在白底上只有 2.6:1 */
+    color: #64748b;
     -webkit-tap-highlight-color: transparent;
     transition: color 0.2s ease, transform 0.15s ease;
 }
@@ -757,7 +739,7 @@ canvas {
     transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
 }
 
-.bn-btn.bn-active { color: #059669; }
+.bn-btn.bn-active { color: #047857; }
 .bn-btn.bn-active .bn-icon { background: rgba(16, 185, 129, 0.12); }
 .bn-btn.bn-active .bn-indicator { transform: translateX(-50%) scaleX(1); opacity: 1; }
 
@@ -768,7 +750,8 @@ canvas {
     height: 4rem;
     margin-top: -1.4rem;
     border-radius: 999px;
-    background: linear-gradient(160deg, #34d399, #059669);
+    /* 加深渐变：白字需要 ≥3:1 对比度，原来的 #34d399→#059669 偏亮 */
+    background: linear-gradient(160deg, #059669, #047857);
     box-shadow: 0 10px 24px -8px rgba(5, 150, 105, 0.55);
     color: #fff;
     display: flex;
@@ -793,7 +776,7 @@ canvas {
     width: 8.5rem;
     height: 8.5rem;
     border-radius: 999px;
-    background: linear-gradient(160deg, #34d399, #059669);
+    background: linear-gradient(160deg, #059669, #047857);
     color: #fff;
     display: flex;
     flex-direction: column;
@@ -809,7 +792,8 @@ canvas {
 
 /* 打卡成功动效 */
 .big-log.logged {
-    background: linear-gradient(160deg, #a7f3d0, #34d399);
+    background: linear-gradient(160deg, #6ee7b7, #10b981);
+    color: #064e3b;
     animation: none;
 }
 
@@ -918,4 +902,173 @@ canvas {
     flex: 1 1 0;
     min-height: 0;
     height: auto;
+}
+
+/* ============================================
+   深色主题补全（原实现漏配的组件）
+   ============================================ */
+
+/* ① 补充记录底部抽屉：面板原本固定白底，而面板内的
+      .text-neutral-dark / .text-gray-600 已被深色规则改成浅色，
+      结果是「白底浅字」几乎不可见。 */
+.dark #supplementSheet .supplement-sheet-panel {
+    background: #374151;
+    color: #f9fafb;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.dark #supplementSheet .supplement-sheet-handle {
+    background: #6b7280;
+}
+
+/* ② 补充表单触发条：浅色半透明白底在深色卡片上同样会「白底浅字」 */
+.dark .supplement-toggle {
+    background: rgba(75, 85, 99, 0.55);
+    border-color: rgba(52, 211, 153, 0.45);
+    color: #d1d5db;
+}
+.dark .supplement-toggle:active { background: rgba(75, 85, 99, 0.85); }
+
+/* ③ 底部导航 */
+.dark .bottom-nav {
+    background: rgba(31, 41, 55, 0.94);
+    border-top-color: rgba(75, 85, 99, 0.7);
+}
+.dark .bn-btn { color: #9ca3af; }
+.dark .bn-btn.bn-active { color: #34d399; }
+.dark .bn-btn.bn-active .bn-icon { background: rgba(52, 211, 153, 0.16); }
+.dark .bn-log { border-color: #1f2937; }
+
+/* ④ 顶部栏设置按钮与半透明白底容器 */
+.dark header button {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #d1d5db;
+}
+
+/* ⑤ 「规律洞察」外层与统计页的白色半透明卡片 */
+.dark .bg-white\/80 {
+    background-color: rgba(55, 65, 81, 0.8);
+    border-color: #4b5563;
+}
+.dark .bg-white\/55 { background-color: rgba(75, 85, 99, 0.55); }
+.dark .bg-white { background-color: #374151; }
+.dark .border-gray-100 { border-color: #4b5563; }
+
+/* ⑥ 筛选提示条内部文字（底色已是深绿，需要浅色字保证对比度） */
+.dark #activeFilters .text-emerald-800 { color: #a7f3d0; }
+.dark #activeFilters .text-emerald-700 { color: #6ee7b7; }
+.dark #activeFilters .hover\:text-emerald-800:hover { color: #d1fae5; }
+.dark .bg-emerald-50 { background-color: #064e3b; }
+.dark .border-emerald-100 { border-color: #065f46; }
+
+/* ⑦ 历史列表空状态 */
+.dark #emptyState .text-emerald-300 { color: #34d399; }
+.dark .text-emerald-700 { color: #6ee7b7; }
+.dark .text-emerald-600 { color: #34d399; }
+
+/* ⑦b 强调色（浅色主题下取深色以保证白底可读，深色主题下必须换成浅色，
+   否则深色字压在深色卡片上只有 1.1~1.5:1） */
+.dark .text-primary-dark { color: #34d399; }    /* vs #4b5563 ≈ 3.9:1 */
+.dark .text-secondary-dark { color: #93c5fd; }  /* ≈ 4.2:1 */
+.dark .text-accent-dark { color: #fcd34d; }     /* ≈ 5.2:1 */
+.dark .section-title i { color: #34d399; }
+
+/* ⑧ 导入导出的下拉菜单 */
+.dark #exportDropdown { background-color: #374151; border-color: #4b5563; }
+.dark #exportDropdown .text-gray-700 { color: #e5e7eb; }
+.dark #exportDropdown .hover\:bg-gray-50:hover { background-color: #4b5563; }
+
+/* ============================================
+   健康建议卡片配色（可直接被深色主题覆盖）
+   ============================================ */
+.regularity-box {
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+/* 「本周 vs 上周」涨跌色（原为行内样式，无法随主题切换） */
+.wc-up { color: #b45309; }
+.wc-down { color: #0369a1; }
+
+.dark .wc-up { color: #fcd34d; }
+.dark .wc-down { color: #7dd3fc; }
+
+.reg-empty {
+    background-color: #f1f5f9;
+    color: #475569;
+}
+
+.reg-good {
+    background-color: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+}
+
+.reg-warn {
+    background-color: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+}
+
+.dark .reg-empty {
+    background-color: #374151;
+    color: #d1d5db;
+}
+
+.dark .reg-good {
+    background-color: #064e3b;
+    border-color: #065f46;
+    color: #a7f3d0;
+}
+
+.dark .reg-warn {
+    background-color: #451a03;
+    border-color: #78350f;
+    color: #fcd34d;
+}
+
+/* ============================================
+   移动端细节打磨
+   ============================================ */
+
+/* 头部紧凑一些，给内容区腾出高度（小屏手机尤其明显） */
+.mobile-shell header { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+
+/* 记录条目内的操作按钮：图标 16px 但热区需 ≥44px */
+.record-item .edit-btn,
+.record-item .delete-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 日期/时间控件的原生图标在深色下默认是黑的，这里做反色 */
+.dark input[type="date"],
+.dark input[type="datetime-local"] {
+    color-scheme: dark;
+}
+
+/* 横向溢出保护：长备注/长地点名不撑破卡片 */
+.record-content span,
+.record-content .text-gray-600 {
+    overflow-wrap: anywhere;
+}
+
+/* 尊重系统的「减少动态效果」偏好 */
+@media (prefers-reduced-motion: reduce) {
+    .big-log,
+    .rise-in,
+    #emptyState .animate-bounce-slow {
+        animation: none !important;
+    }
+    .swipe-wrapper,
+    #supplementSheet,
+    #supplementSheet .supplement-sheet-panel {
+        transition-duration: 0.01ms !important;
+    }
 }

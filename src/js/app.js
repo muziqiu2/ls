@@ -2,7 +2,7 @@
 // 应用入口：初始化 + 事件绑定
 // ==========================================
 import { initDom, el, state } from './state.js';
-import { loadRecords } from './storage.js';
+import { loadRecords, getStorageError } from './storage.js';
 import { initChart, updateChart } from './chart.js';
 import { updateStatistics } from './stats.js';
 import { initSwipeEvents, switchTab } from './swipe.js';
@@ -11,6 +11,8 @@ import {
   closeConfirmModal,
   handleConfirmOk,
   handleModalOverlayClick,
+  registerModal,
+  showToast,
 } from './ui.js';
 import {
   renderRecords,
@@ -25,9 +27,10 @@ import {
   applyFilter,
   resetFilter,
   clearFilters,
-  handleSearch,
+  handleSearchDebounced,
   clearSearch,
   onChartDayClick,
+  refreshTodayCount,
 } from './records.js';
 import {
   toggleExportDropdown,
@@ -65,7 +68,8 @@ function bindEvents() {
   document.getElementById('applyFilterBtn').addEventListener('click', applyFilter);
   document.getElementById('resetFilterBtn').addEventListener('click', resetFilter);
   document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
-  document.getElementById('searchInput').addEventListener('input', handleSearch);
+  // 搜索加 200ms 防抖：否则每敲一个字符都会全量重渲染列表
+  document.getElementById('searchInput').addEventListener('input', handleSearchDebounced);
   document.getElementById('clearSearchBtn').addEventListener('click', clearSearch);
 
   // 数据导入导出 / 备份
@@ -100,6 +104,12 @@ function bindEvents() {
   document.getElementById('confirmOkBtn').addEventListener('click', handleConfirmOk);
   document.getElementById('confirmModal').addEventListener('click', handleModalOverlayClick);
 
+  // 各浮层统一注册关闭函数：遮罩点击与 Esc 都走同一条路径，
+  // 避免直接改 classList 导致回调等状态残留
+  registerModal(el.settingsModal, closeSettingsModal);
+  registerModal(el.restoreModal, closeRestoreModal);
+  registerModal(el.confirmModal, closeConfirmModal);
+
   // Toast 动作按钮（如删除撤销）
   el.toastAction.addEventListener('click', handleToastAction);
 
@@ -126,9 +136,9 @@ function handleQuickAdd() {
 
 /**
  * 全局键盘快捷键
- * - N：切到「添加」并聚焦
+ * - N：切到「打卡」页
  * - 1/2/3：切换标签页
- * - Esc：关闭打开的模态框（输入框聚焦时仅失焦）
+ * - Esc：关闭打开的浮层（输入框聚焦时仅失焦）
  */
 function handleKeydown(e) {
   const tag = (e.target && e.target.tagName ? e.target.tagName.toLowerCase() : '');
@@ -145,28 +155,64 @@ function handleKeydown(e) {
   } else if (['1', '2', '3'].includes(e.key)) {
     switchTab(parseInt(e.key, 10) - 1);
   } else if (e.key === 'Escape') {
-    [el.settingsModal, el.restoreModal, el.confirmModal].forEach(m => {
-      if (m) m.classList.add('hidden');
-    });
+    // 走各模块自己的关闭函数，保证回调与滚动锁一并复位
+    closeSettingsModal();
+    closeRestoreModal();
+    closeConfirmModal();
     closeSupplement();
   }
 }
 
 // ---------- 初始化 ----------
 
+/**
+ * 单个初始化步骤失败不应让整页瘫痪（例如图表库没加载上，
+ * 不该连带导致标签切换、打卡按钮全部失效）。
+ */
+function runStep(name, fn) {
+  try {
+    const result = fn();
+    if (result && typeof result.catch === 'function') {
+      result.catch(error => console.error(`初始化步骤「${name}」失败：`, error));
+    }
+    return result;
+  } catch (error) {
+    console.error(`初始化步骤「${name}」失败：`, error);
+    return undefined;
+  }
+}
+
 async function init() {
-  await loadRecords();
-  initDom();
-  setCurrentTime();
-  bindEvents();
-  await loadSettings();
-  renderRecords();
-  updateStatistics();
-  initChart();
-  initSwipeEvents();
-  switchTab(state.currentTabIndex); // 初始定位到默认标签页并同步底部/顶部激活态
-  setDefaultDates();
+  await runStep('加载记录', loadRecords);
+  const storageError = getStorageError();
+
+  runStep('缓存 DOM 引用', initDom);
+  runStep('设置默认时间', setCurrentTime);
+  runStep('绑定事件', bindEvents);
+  await runStep('加载设置', loadSettings);
+
+  // 顺序要紧：默认日期必须先写入输入框并同步筛选提示，
+  // 否则首屏显示全部记录、输入框却已埋好「近 7 天」，
+  // 用户一搜索就会看到一周前的记录成批消失且没有任何提示。
+  runStep('设置默认日期范围', setDefaultDates);
+  runStep('渲染记录列表', renderRecords);
+  runStep('刷新统计', updateStatistics);
+  runStep('刷新今日计数', refreshTodayCount);
+  // 事件监听先于图表初始化注册，避免图表初始化失败时联动一起失效
   window.addEventListener('chart-day-click', onChartDayClick);
+  runStep('初始化图表', initChart);
+  runStep('初始化滑动', initSwipeEvents);
+  runStep('切换初始标签页', () => switchTab(state.currentTabIndex));
+
+  if (storageError) {
+    showToast(
+      '数据加载失败：' + storageError.message + '。已暂停写入以保护原有数据。',
+      'error',
+      null,
+      null,
+      9000
+    );
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);
