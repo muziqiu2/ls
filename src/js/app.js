@@ -48,7 +48,7 @@ import {
   saveSettings,
   clearAllData,
 } from './settings.js';
-import { initAiInsights, populateAiProviders, refreshAiInsight } from './ai-insights.js';
+import { initAiWeekly, populateAiProviders, refreshAiWeekly } from './ai-insights.js';
 import {
   testCloudConnection,
   uploadToCloud,
@@ -86,10 +86,10 @@ function bindEvents() {
 
   // 设置
   document.getElementById('settingsBtn').addEventListener('click', openSettingsModal);
-  // 保存后要让统计页的 AI 卡片立刻反映新的开关/配置状态
+  // 保存后要让统计页的 AI 周报立刻反映新的开关/配置状态
   document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
     await saveSettings();
-    refreshAiInsight();
+    refreshAiWeekly();
   });
   document.getElementById('cancelSettingsBtn').addEventListener('click', closeSettingsModal);
   document.getElementById('settingsModal').addEventListener('click', handleModalOverlayClick);
@@ -197,7 +197,7 @@ async function init() {
   // 服务商下拉必须先于 loadSettings 建好，否则 loadSettings 赋的 value 会丢失
   runStep('填充 AI 服务商', populateAiProviders);
   await runStep('加载设置', loadSettings);
-  runStep('初始化 AI 洞察', initAiInsights);
+  runStep('初始化 AI 周报', initAiWeekly);
 
   // 顺序要紧：默认日期必须先写入输入框并同步筛选提示，
   // 否则首屏显示全部记录、输入框却已埋好「近 7 天」，

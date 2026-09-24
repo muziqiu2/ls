@@ -1,34 +1,63 @@
 // ==========================================
-// AI 洞察 · 界面层（状态机 + 知情同意 + 安全渲染 + 结果缓存）
+// AI 每周总结 · 界面层
 // ==========================================
-// 几条不可退让的约束：
-//   1. 只有用户点「生成洞察」才发请求 —— 刷新统计、切换时间范围都不会偷偷调用；
-//   2. 换了服务商（域名变了）必须重新征求同意；
-//   3. 模型返回的文本一律当**不可信输入**处理，只用 textContent 组装 DOM，不用 innerHTML。
+// 产品形态（2026-09-24 按用户要求调整）：
+//   · 不再需要手动点「生成」—— 每周第一次打开时自动生成一次，结果显示在统计页
+//     「规律洞察」结论的下方；
+//   · 已去掉知情同意弹窗（密钥与服务商都由用户自己选定）。透明度改为非阻塞的：
+//     设置页里列明「会发送什么 / 不会发送什么」，并可展开查看实际要发送的 JSON；
+//   · 成本封顶：同一个自然周内最多自动请求 1 次，跨周才重新生成。
+// 仍然不可退让的一条：模型返回的文本一律当**不可信输入**处理，只用 textContent 组装 DOM。
 import { el, state } from './state.js';
-import { getSettings, updateAiConsent, openSettingsModal } from './settings.js';
-import { showToast, setLayerOpen, registerModal } from './ui.js';
+import { getSettings } from './settings.js';
 import { idbGet, idbSet } from './idb.js';
-import { PROVIDERS, getProvider, normalizeBaseUrl, hostOf, providerHint } from './ai-providers.js';
+import { PROVIDERS, getProvider, normalizeBaseUrl, providerHint } from './ai-providers.js';
 import { buildSummary, buildMessages, cacheKeyOf, consentFields } from './ai-prompt.js';
 import { requestInsight, fetchModels, AiError } from './ai-client.js';
-import { formatDate, formatTime } from './utils.js';
+import { formatTime } from './utils.js';
 
-const CACHE_IDB_KEY = 'aiInsightCacheV1';
+const CACHE_IDB_KEY = 'aiWeeklyInsightV1';
+const WEEK_DAYS = 7;   // 周报覆盖的窗口：最近 7 天（含今天）
+const MIN_RECORDS = 3; // 数据太薄就没必要烧 token，本地的规则结论已经够用
 
-// 模块内状态：生成中的取消控制器与当前累计文本
-let abortController = null;
+let cached = null;          // { weekKey, key, text, model, provider, createdAt }
+let cachePromise = null;
+let generating = false;
 let pendingText = '';
 let rafId = 0;
-let cached = null;      // { key, text, model, createdAt }
-let cacheLoaded = false;
 let lastError = null;
+// 已尝试过自动生成的组合（周 + 服务商 + 模型）。
+// 不能只记周：周内换了模型就该重新生成一次，否则缓存不匹配又不放行自动生成，
+// 界面会变成「什么都不显示」——比报错更让人困惑。
+let autoTriedKey = '';
 
-/** 取当前时间范围（与统计页图表共用同一个下拉，保证「AI 看到的就是你看到的」） */
-function currentDays() {
-  const value = el.timeRangeSelect ? el.timeRangeSelect.value : '14';
-  return value === 'all' ? 'all' : Number(value) || 14;
+const pad = n => String(n).padStart(2, '0');
+
+// ---------- 周与窗口 ----------
+
+/** 周一为一周第一天，与统计模块保持一致 */
+function weekStartOf(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay();
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  return d;
 }
+
+/** 用「本周周一」的日期当周标识，跨周即失效 */
+function weekKeyOf(date = new Date()) {
+  const s = weekStartOf(date);
+  return `${s.getFullYear()}-${pad(s.getMonth() + 1)}-${pad(s.getDate())}`;
+}
+
+/** 周报实际覆盖的窗口（最近 7 天，含今天）—— 标签与真实内容保持一致 */
+function windowLabel(now = new Date()) {
+  const from = new Date(now);
+  from.setDate(from.getDate() - (WEEK_DAYS - 1));
+  return `${from.getMonth() + 1}/${from.getDate()} – ${now.getMonth() + 1}/${now.getDate()}`;
+}
+
+// ---------- 配置 ----------
 
 function aiConfig() {
   const ai = (getSettings().ai) || {};
@@ -41,7 +70,6 @@ function aiConfig() {
     baseUrl: normalizeBaseUrl(ai.baseUrl || provider.baseUrl),
     model: String(ai.model || provider.model || '').trim(),
     apiKey: String(ai.apiKey || '').trim(),
-    consentedHost: String(ai.consentedHost || ''),
   };
 }
 
@@ -49,17 +77,25 @@ function isConfigured(cfg) {
   return !!(cfg.enabled && cfg.baseUrl && cfg.model && cfg.apiKey);
 }
 
-// ---------- 结果缓存 ----------
+// ---------- 缓存 ----------
 
-async function loadCache() {
-  if (cacheLoaded) return;
-  cacheLoaded = true;
-  try {
-    const stored = await idbGet(CACHE_IDB_KEY);
-    if (stored && typeof stored.text === 'string') cached = stored;
-  } catch {
-    cached = null;
+/**
+ * 读一次缓存。**必须缓存 Promise 而不是布尔标志**：
+ * 初始化与 stats-updated 会几乎同时调进来，若第二个调用者因为「已开始加载」
+ * 就直接返回，它会拿到 cached === null，误判成「本周还没生成过」而重复发一次请求。
+ */
+function loadCache() {
+  if (!cachePromise) {
+    cachePromise = (async () => {
+      try {
+        const stored = await idbGet(CACHE_IDB_KEY);
+        if (stored && typeof stored.text === 'string') cached = stored;
+      } catch {
+        cached = null;
+      }
+    })();
   }
+  return cachePromise;
 }
 
 async function saveCache(entry) {
@@ -67,7 +103,7 @@ async function saveCache(entry) {
   try {
     await idbSet(CACHE_IDB_KEY, entry);
   } catch {
-    // 缓存写不进去不影响本次展示，下次重新请求即可
+    // 缓存写不进去不影响本次展示，下周重新请求即可
   }
 }
 
@@ -150,321 +186,165 @@ function renderRich(container, text) {
   });
 }
 
-// ---------- 界面状态机 ----------
+// ---------- 界面 ----------
 
 function setHidden(node, hidden) {
   if (node) node.classList.toggle('hidden', !!hidden);
 }
 
-function showError(message) {
-  if (!el.aiError) return;
-  el.aiError.textContent = message;
-  setHidden(el.aiError, false);
-}
-
-function clearError() {
-  if (!el.aiError) return;
-  el.aiError.textContent = '';
-  setHidden(el.aiError, true);
-}
-
-/** 把错误整理成一句给用户看的话（对方返回的原因也带上，方便自查） */
-function errorMessageOf(error) {
-  const base = error && error.message ? error.message : '生成失败，请稍后重试。';
-  const detail = error && error.detail ? '（对方提示：' + String(error.detail).slice(0, 80) + '）' : '';
-  return base + detail;
-}
-
 function stopCaret() {
   if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
-  setHidden(el.aiCaret, true);
+  setHidden(el.aiWeeklyCaret, true);
+  if (el.aiWeeklyText) el.aiWeeklyText.classList.remove('is-streaming');
 }
 
-function renderPreview(summary) {
-  if (!el.aiPreviewBody || !el.aiPreview) return;
-  // 把实际会发送的内容原样摆出来，用户能自己核对
-  el.aiPreviewBody.textContent = JSON.stringify(summary, null, 2);
-  setHidden(el.aiPreview, false);
-}
-
-function renderMeta(text, subline) {
-  if (!el.aiMeta) return;
-  el.aiMeta.textContent = '';
-  if (text) {
-    const span = document.createElement('span');
-    span.textContent = text;
-    el.aiMeta.appendChild(span);
-  }
-  if (subline) {
-    const p = document.createElement('p');
-    p.className = 'ai-disclaimer';
-    p.textContent = subline;
-    el.aiMeta.appendChild(p);
-  }
-  setHidden(el.aiMeta, !text && !subline);
+function hideAll() {
+  stopCaret();
+  setHidden(el.aiWeekly, true);
+  setHidden(el.aiWeeklyHint, true);
 }
 
 /**
- * 刷新整张卡片。不发起任何网络请求，只根据「配置 / 缓存 / 生成中」决定显示什么。
+ * 单行提示。带 action 时行尾附一个可点的「重试 / 去设置」。
+ * 刻意做得很安静（与卡片内其它文本同一视觉重量），不做成大卡片。
  */
-export async function refreshAiInsight() {
-  if (!el.aiCard) return;
+function showHint(text, action) {
+  if (!el.aiWeeklyHint) return;
+  el.aiWeeklyHint.textContent = '';
+  el.aiWeeklyHint.appendChild(document.createTextNode(text));
+  if (action) {
+    el.aiWeeklyHint.appendChild(document.createTextNode(' '));
+    const link = document.createElement('span');
+    link.className = 'ai-weekly-link';
+    link.textContent = action.label;
+    link.setAttribute('role', 'button');
+    link.setAttribute('tabindex', '0');
+    link.dataset.action = action.id;
+    el.aiWeeklyHint.appendChild(link);
+  }
+  setHidden(el.aiWeeklyHint, false);
+}
+
+function showSummary(text, cfg, createdAt) {
+  setHidden(el.aiWeeklyHint, true);
+  setHidden(el.aiWeekly, false);
+  renderRich(el.aiWeeklyText, text);
+  if (el.aiWeeklyRange) el.aiWeeklyRange.textContent = windowLabel();
+
+  if (el.aiWeeklyMeta) {
+    el.aiWeeklyMeta.textContent = '';
+    const line = document.createElement('span');
+    line.textContent = `${cfg.model} · 生成于 ${formatTime(new Date(createdAt))}`;
+    el.aiWeeklyMeta.appendChild(line);
+    const note = document.createElement('span');
+    note.className = 'ai-weekly-note';
+    note.textContent = '仅供参考，不构成医疗建议';
+    el.aiWeeklyMeta.appendChild(note);
+  }
+}
+
+function showStreaming(cfg) {
+  setHidden(el.aiWeeklyHint, true);
+  setHidden(el.aiWeekly, false);
+  if (el.aiWeeklyRange) el.aiWeeklyRange.textContent = `${windowLabel()} · 正在生成`;
+  el.aiWeeklyText.textContent = '';
+  el.aiWeeklyText.classList.add('is-streaming');
+  setHidden(el.aiWeeklyCaret, false);
+  if (el.aiWeeklyMeta) el.aiWeeklyMeta.textContent = '';
+}
+
+function errorMessageOf(error) {
+  const base = error && error.message ? error.message : '生成失败，请稍后重试。';
+  const detail = error && error.detail ? '（' + String(error.detail).slice(0, 60) + '）' : '';
+  return base + detail;
+}
+
+// ---------- 主流程 ----------
+
+/**
+ * 重算展示状态。**只有跨周且本周还没生成过时才会发请求**，其余情况纯读缓存。
+ */
+export async function refreshAiWeekly() {
+  if (!el.aiWeekly) return;
 
   await loadCache();
 
   const cfg = aiConfig();
-  const generating = !!abortController;
-  const summary = buildSummary(state.records, { days: currentDays() });
-  const key = cacheKeyOf(summary, cfg);
-  const hasData = state.records.length > 0;
 
-  if (el.aiBadge) {
-    const overseas = cfg.region === 'overseas';
-    const known = cfg.region === 'cn' || overseas;
-    // 自定义地址无从判断属地，不能替用户断言「数据不出境」
-    el.aiBadge.textContent = overseas ? '数据出境' : known ? '境内服务' : '第三方服务';
-    setHidden(el.aiBadge, !isConfigured(cfg));
-    el.aiBadge.classList.toggle('ai-badge-warn', overseas || !known);
-  }
-
-  // 生成中：保留已渲染的文字，只交换按钮
-  if (generating) {
-    setHidden(el.aiOutput, false);
-    setHidden(el.aiGenerateBtn, true);
-    setHidden(el.aiSettingsBtn, true);
-    setHidden(el.aiStopBtn, false);
-    setHidden(el.aiPreview, true);
-    return;
-  }
-
-  setHidden(el.aiStopBtn, true);
-  stopCaret();
-
-  // 错误要能留在屏幕上等用户读完：生成结束时会再调一次本函数，
-  // 如果这里无脑 clearError()，刚显示出来的报错会被立刻擦掉。
-  if (lastError) showError(errorMessageOf(lastError));
-  else clearError();
-
-  // 引导语默认显示；只有「已经有正文可看」时才隐藏（见下面的缓存命中分支）
-  setHidden(el.aiIntro, false);
-
+  // 未启用：什么都不显示，保持界面干净（入口在设置里）
   if (!cfg.enabled) {
-    lastError = null;
-    clearError();
-    if (el.aiIntro) el.aiIntro.textContent = '未启用。开启后可以调用你自己的大模型，把上面的统计结论总结成一段更容易读懂的解读。';
-    setHidden(el.aiGenerateBtn, true);
-    setHidden(el.aiSettingsBtn, false);
-    setHidden(el.aiOutput, true);
-    setHidden(el.aiPreview, true);
-    renderMeta('');
+    hideAll();
     return;
   }
 
+  // 启用但没配完：给一行提示，别让用户以为坏了
   if (!isConfigured(cfg)) {
-    lastError = null;
-    clearError();
-    if (el.aiIntro) el.aiIntro.textContent = '已启用，但还没填完服务地址 / 模型 / API Key。填好之后就能生成。';
-    setHidden(el.aiGenerateBtn, true);
-    setHidden(el.aiSettingsBtn, false);
-    setHidden(el.aiOutput, true);
-    setHidden(el.aiPreview, true);
-    renderMeta('');
+    hideAll();
+    showHint('AI 每周总结已开启，还差服务地址 / 模型 / API Key。', { id: 'settings', label: '去设置' });
     return;
   }
 
-  if (!hasData) {
-    lastError = null;
-    clearError();
-    if (el.aiIntro) el.aiIntro.textContent = '还没有记录。先积累几天数据，AI 解读才有意义。';
-    setHidden(el.aiGenerateBtn, true);
-    setHidden(el.aiSettingsBtn, false);
-    setHidden(el.aiPreview, true);
-    renderMeta('');
+  const summary = buildSummary(state.records, { days: WEEK_DAYS });
+
+  // 数据太薄：本地的规则结论已经够用，不浪费 token
+  if (summary.记录总数 < MIN_RECORDS) {
+    hideAll();
+    showHint(`AI 周报会在最近 7 天有 ${MIN_RECORDS} 条记录后自动出现在这里。`);
     return;
   }
 
-  // 缓存命中：直接展示，不重复请求
-  if (cached && cached.key === key && cached.text) {
-    lastError = null;
-    clearError();
-    // 有正文在，上方那段引导语就是多余的
-    setHidden(el.aiIntro, true);
-    setHidden(el.aiOutput, false);
-    renderRich(el.aiText, cached.text);
-    renderMeta(
-      `${cfg.model} · ${formatDate(new Date(cached.createdAt))} ${formatTime(new Date(cached.createdAt))}`,
-      '以上仅供参考，不构成医疗建议。'
-    );
-    setHidden(el.aiGenerateBtn, false);
-    el.aiGenerateBtn.textContent = '重新生成';
-    setHidden(el.aiSettingsBtn, false);
-    renderPreview(summary);
+  const weekKey = weekKeyOf();
+  const sameWeek = !!(
+    cached && cached.text &&
+    cached.weekKey === weekKey &&
+    cached.provider === cfg.provider &&
+    cached.model === cfg.model
+  );
+
+  if (sameWeek) {
+    showSummary(cached.text, cfg, cached.createdAt);
     return;
   }
 
-  // 摘要变了但旧结果还在：继续展示旧内容并说明它已过期，
-  // 不要因为多记了一条就把用户上次花钱换来的解读清空。
-  const cacheStale = !!(cached && cached.text);
-  if (cacheStale) {
-    setHidden(el.aiOutput, false);
-    renderRich(el.aiText, cached.text);
-    renderMeta(
-      `${cached.model || cfg.model} · 上次生成于 ${formatDate(new Date(cached.createdAt))} ${formatTime(new Date(cached.createdAt))}`,
-      '记录或时间范围已变化，以上为上次生成的内容，仅供参考，不构成医疗建议。'
-    );
+  if (generating) return;
+
+  // 本周 + 当前模型还没自动跑过 → 自动生成（同一组合每周仅一次）
+  const autoKey = `${weekKey}|${cfg.provider}|${cfg.model}`;
+  if (autoTriedKey !== autoKey) {
+    autoTriedKey = autoKey;
+    await generate(cfg);
+    return;
+  }
+
+  // 该组合已经自动尝试过且失败：不当成错误刷屏，只留一行可重试的提示
+  if (lastError) {
+    hideAll();
+    showHint(`AI 周报生成失败：${errorMessageOf(lastError)}`, { id: 'retry', label: '重试' });
   } else {
-    setHidden(el.aiOutput, true);
-    el.aiText.textContent = '';
-    el.aiText.classList.remove('is-streaming');
-    renderMeta('');
+    hideAll();
   }
-
-  if (el.aiIntro) {
-    el.aiIntro.textContent = cacheStale
-      ? '记录或时间范围已变化，可以重新生成一份解读。'
-      : '点「生成洞察」，让 AI 把上面的数据总结成一段更容易读懂的解读。只发送聚合统计，不含备注原文。';
-  }
-  setHidden(el.aiGenerateBtn, false);
-  el.aiGenerateBtn.textContent = cacheStale ? '重新生成' : '生成洞察';
-  setHidden(el.aiSettingsBtn, false);
-  renderPreview(summary);
 }
 
-// ---------- 知情同意 ----------
-
-function buildConsentBody(cfg, summary) {
-  if (!el.aiConsentBody) return;
-  el.aiConsentBody.textContent = '';
-
-  const add = (tag, cls, text) => {
-    const node = document.createElement(tag);
-    if (cls) node.className = cls;
-    node.textContent = text;
-    el.aiConsentBody.appendChild(node);
-    return node;
-  };
-
-  add('p', 'ai-consent-lead', '「AI 洞察」需要把你的一部分统计数据发送给第三方大模型服务。请先确认以下内容：');
-
-  const ul = document.createElement('ul');
-  ul.className = 'ai-consent-list';
-  const items = [
-    `发送到：${hostOf(cfg.baseUrl) || cfg.baseUrl}（${cfg.providerName}）`,
-    `使用的模型：${cfg.model}`,
-    '发送内容：仅聚合统计结果，逐项如下',
-    '不会发送：备注原文、精确时间、自定义地点名称',
-    '数据用途：生成下方这一段解读文本，不用于训练你的个人数据',
-  ];
-  items.forEach(t => {
-    const li = document.createElement('li');
-    li.textContent = t;
-    ul.appendChild(li);
-  });
-  el.aiConsentBody.appendChild(ul);
-
-  // 字段逐条列出来太长，压成一行更好读；完整内容在下面的 details 里可查
-  add('p', 'ai-consent-fields', '发送字段：' + consentFields(summary).join('、'));
-
-  if (cfg.region === 'overseas') {
-    add(
-      'p',
-      'ai-consent-warn',
-      '注意：该服务商在境外，属于个人信息出境，数据将传输并存储于境外。如对此有顾虑，可在设置里换用境内服务商。'
-    );
-  } else if (cfg.region !== 'cn') {
-    add(
-      'p',
-      'ai-consent-warn',
-      '你使用的是自定义服务地址，本工具无法判断它的属地与合规要求。请自行确认你信任该服务商，并了解它如何处理你的数据。'
-    );
-  }
-
-  const detail = document.createElement('details');
-  detail.className = 'ai-consent-detail';
-  const sum = document.createElement('summary');
-  sum.textContent = '查看即将发送的完整内容';
-  detail.appendChild(sum);
-  const pre = document.createElement('pre');
-  pre.className = 'ai-consent-pre';
-  pre.textContent = JSON.stringify(summary, null, 2);
-  detail.appendChild(pre);
-  el.aiConsentBody.appendChild(detail);
-
-  add('p', 'ai-consent-dim', '健康数据属于敏感个人信息，本次发送需要你的单独同意。你可以随时在设置里关闭该功能。同意只对上面这个域名生效，换服务商时会重新征求。');
-}
-
-function openConsentModal(cfg, summary) {
-  buildConsentBody(cfg, summary);
-  el.aiConsentModal.classList.remove('hidden');
-  setLayerOpen(true);
-}
-
-function closeConsentModal() {
-  if (!el.aiConsentModal || el.aiConsentModal.classList.contains('hidden')) return;
-  el.aiConsentModal.classList.add('hidden');
-  setLayerOpen(false);
-}
-
-// ---------- 生成 ----------
-
-async function handleGenerate() {
-  if (abortController) return;
-
-  const cfg = aiConfig();
-  if (!isConfigured(cfg)) {
-    showToast('请先在设置里填好服务地址、模型和 API Key。', 'info');
-    return;
-  }
-  if (state.records.length === 0) {
-    showToast('还没有记录，先积累几天数据吧。', 'info');
-    return;
-  }
-
-  const summary = buildSummary(state.records, { days: currentDays() });
-
-  // 同意按「域名」记账：换了服务商就要重新确认
-  if (cfg.consentedHost !== hostOf(cfg.baseUrl)) {
-    openConsentModal(cfg, summary);
-    return;
-  }
-
-  await startGeneration(cfg, summary);
-}
-
-async function startGeneration(cfg, summary) {
-  closeConsentModal();
-
-  abortController = new AbortController();
-  pendingText = '';
+/** 发起一次生成并流式写入 */
+async function generate(cfg) {
+  if (generating) return;
+  generating = true;
   lastError = null;
+  pendingText = '';
 
-  setHidden(el.aiOutput, false);
-  setHidden(el.aiError, true);
-  setHidden(el.aiPreview, true);
-  setHidden(el.aiGenerateBtn, true);
-  setHidden(el.aiSettingsBtn, true);
-  setHidden(el.aiStopBtn, false);
-  setHidden(el.aiCaret, false);
-  if (el.aiIntro) el.aiIntro.textContent = '正在生成…';
-  el.aiText.textContent = '';
-  // 流式阶段用 pre-wrap 保留换行；富文本渲染时由 renderRich 摘掉这个类
-  el.aiText.classList.add('is-streaming');
+  const summary = buildSummary(state.records, { days: WEEK_DAYS });
+  showStreaming(cfg);
 
   const scheduleFlush = () => {
     if (rafId) return;
     rafId = requestAnimationFrame(() => {
       rafId = 0;
-      el.aiText.textContent = pendingText;
-      // 生成过程中始终把光标滚进视野，长文本就不会「看不见进度」
-      if (el.aiCard && el.aiCard.scrollIntoView) {
-        el.aiCaret.scrollIntoView({ block: 'nearest' });
-      }
+      if (el.aiWeeklyText) el.aiWeeklyText.textContent = pendingText;
     });
   };
 
   try {
     const text = await requestInsight(cfg, buildMessages(summary), {
-      signal: abortController.signal,
       onToken: chunk => {
         pendingText += chunk;
         scheduleFlush();
@@ -472,14 +352,9 @@ async function startGeneration(cfg, summary) {
     });
 
     stopCaret();
-    el.aiText.textContent = '';
-    renderRich(el.aiText, text);
-    renderMeta(
-      `${cfg.model} · ${formatDate(new Date())} ${formatTime(new Date())}`,
-      '以上仅供参考，不构成医疗建议。'
-    );
-    el.aiGenerateBtn.textContent = '重新生成';
+    showSummary(text, cfg, Date.now());
     await saveCache({
+      weekKey: weekKeyOf(),
       key: cacheKeyOf(summary, cfg),
       text,
       model: cfg.model,
@@ -488,51 +363,42 @@ async function startGeneration(cfg, summary) {
     });
   } catch (error) {
     stopCaret();
-    const kind = error instanceof AiError ? error.kind : 'unknown';
-    if (kind === 'aborted') {
-      // 用户主动取消：保留已生成的部分，不要让辛苦等到的内容消失
-      if (pendingText.trim()) {
-        renderRich(el.aiText, pendingText);
-        renderMeta(`${cfg.model} · 已中断`, '以上内容不完整，仅供参考，不构成医疗建议。');
-      } else {
-        setHidden(el.aiOutput, true);
-      }
-      showToast('已停止生成。', 'info');
+    lastError = error instanceof AiError ? error : new AiError('unknown', '生成失败，请稍后重试。');
+    // 有上次结果就继续留着（多记几条不该把上周的总结弄丢），只把失败原因摆在下面
+    if (cached && cached.text) {
+      showSummary(cached.text, cfg, cached.createdAt);
+      showHint(`本次更新失败：${errorMessageOf(lastError)}`, { id: 'retry', label: '重试' });
     } else {
-      setHidden(el.aiOutput, true);
-      lastError = error;
-      showError(errorMessageOf(error));
+      hideAll();
+      showHint(`AI 周报生成失败：${errorMessageOf(lastError)}`, { id: 'retry', label: '重试' });
     }
   } finally {
-    abortController = null;
-    await refreshAiInsight();
+    generating = false;
   }
-}
-
-function handleStop() {
-  if (abortController) abortController.abort();
 }
 
 // ---------- 设置页交互 ----------
 
-/** 切换服务商时把预设地址与模型填进去，用户仍可改 */
+function setFieldHint(text) {
+  if (el.aiProviderHint) el.aiProviderHint.textContent = text;
+}
+
 function applyProviderPreset(keepFilled) {
   const provider = getProvider(el.aiProvider.value);
-
   if (!keepFilled || !el.aiBaseUrl.value.trim()) el.aiBaseUrl.value = provider.baseUrl;
   if (!keepFilled || !el.aiModel.value.trim()) el.aiModel.value = provider.model;
-
-  if (el.aiProviderHint) el.aiProviderHint.textContent = providerHint(provider.id);
+  setFieldHint(providerHint(provider.id));
   if (el.aiFetchModelsBtn) el.aiFetchModelsBtn.disabled = false;
+  // 换了服务商，上一家的模型列表不再适用
+  setHidden(el.aiModelPickWrap, true);
 }
 
 async function handleFetchModels() {
-  const cfg = aiConfig();
   const baseUrl = normalizeBaseUrl(el.aiBaseUrl.value);
   const apiKey = el.aiApiKey.value.trim();
 
-  if (!baseUrl) { showToast('请先填写服务地址。', 'info'); return; }
-  if (!apiKey) { showToast('请先填写 API Key。', 'info'); return; }
+  if (!baseUrl) { setFieldHint('请先填写服务地址。'); return; }
+  if (!apiKey) { setFieldHint('请先填写 API Key。'); return; }
 
   el.aiFetchModelsBtn.disabled = true;
   const original = el.aiFetchModelsBtn.textContent;
@@ -541,28 +407,68 @@ async function handleFetchModels() {
   try {
     const models = await fetchModels({ baseUrl, apiKey });
     if (!models.length) {
-      showToast('该服务没有返回模型列表，请手动填写模型名。', 'info');
+      setHidden(el.aiModelPickWrap, true);
+      setFieldHint('该服务没有返回模型列表，请手动填写模型名。');
     } else {
-      el.aiModelList.innerHTML = '';
-      models.forEach(id => {
-        const opt = document.createElement('option');
-        opt.value = id;
-        el.aiModelList.appendChild(opt);
-      });
-      showToast(`读取到 ${models.length} 个模型，可在「模型」输入框里选择。`, 'success');
+      renderModelPicker(models);
+      setFieldHint(`读取到 ${models.length} 个模型，可在下方下拉框中选择。`);
     }
   } catch (error) {
-    showToast(error && error.message ? error.message : '读取失败，请手动填写模型名。', 'error');
+    setHidden(el.aiModelPickWrap, true);
+    setFieldHint(error && error.message ? error.message : '读取失败，请手动填写模型名。');
   } finally {
     el.aiFetchModelsBtn.disabled = false;
     el.aiFetchModelsBtn.textContent = original;
   }
 }
 
+/**
+ * 用原生 <select> 承载模型列表。
+ * 上一版用的是 `<datalist>` —— 它在 iOS Safari 上**根本不渲染下拉**，
+ * 于是「可在模型输入框中选择」这句提示成了空话。换成所有浏览器都支持的 select。
+ */
+function renderModelPicker(models) {
+  el.aiModelPick.textContent = '';
+
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = `选择模型（共 ${models.length} 个）`;
+  el.aiModelPick.appendChild(placeholder);
+
+  models.forEach(id => {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = id;
+    el.aiModelPick.appendChild(opt);
+  });
+
+  // 当前已填的模型若在列表里就直接选中，省得用户再找一遍
+  const current = el.aiModel.value.trim();
+  el.aiModelPick.value = models.includes(current) ? current : '';
+  setHidden(el.aiModelPickWrap, false);
+}
+
 function handleClearKey() {
-  if (!el.aiApiKey.value) { showToast('当前没有填写密钥。', 'info'); return; }
+  if (!el.aiApiKey.value) { setFieldHint('当前没有填写密钥。'); return; }
   el.aiApiKey.value = '';
-  showToast('密钥已清除，别忘了点下方「保存设置」。', 'info');
+  setFieldHint('密钥已清除，别忘了点下方「保存设置」。');
+}
+
+/**
+ * 设置页里的「会发送什么 / 查看将发送的内容」。
+ * 这是去掉知情同意弹窗后保留的透明度：内容随时可查，但不阻塞操作。
+ * 字段名由 consentFields() 从真实摘要生成，避免说明与实际发送内容脱节。
+ */
+export function updateSendPreview() {
+  if (el.aiPreviewBody || el.aiSendFields) {
+    try {
+      const summary = buildSummary(state.records, { days: WEEK_DAYS });
+      if (el.aiSendFields) el.aiSendFields.textContent = consentFields(summary).join('、');
+      if (el.aiPreviewBody) el.aiPreviewBody.textContent = JSON.stringify(summary, null, 2);
+    } catch {
+      if (el.aiPreviewBody) el.aiPreviewBody.textContent = '（暂时无法生成预览）';
+    }
+  }
 }
 
 // ---------- 绑定 ----------
@@ -581,39 +487,55 @@ export function populateAiProviders() {
     el.aiProvider.appendChild(opt);
   });
   el.aiProvider.value = PROVIDERS[0].id;
-  if (el.aiProviderHint) el.aiProviderHint.textContent = providerHint(PROVIDERS[0].id);
+  setFieldHint(providerHint(PROVIDERS[0].id));
   applyProviderPreset(true);
 }
 
-export function initAiInsights() {
-  if (!el.aiGenerateBtn) return;
+export function initAiWeekly() {
+  if (!el.aiWeekly) return;
 
-  el.aiGenerateBtn.addEventListener('click', handleGenerate);
-  el.aiStopBtn.addEventListener('click', handleStop);
-  el.aiSettingsBtn.addEventListener('click', openSettingsModal);
+  // 手动重新生成：不是主路径，只是跨周之前想提前刷新时用
+  if (el.aiWeeklyRefresh) {
+    el.aiWeeklyRefresh.addEventListener('click', () => {
+      const cfg = aiConfig();
+      if (!isConfigured(cfg) || generating) return;
+      lastError = null;
+      generate(cfg);
+    });
+  }
 
-  el.aiConsentCancelBtn.addEventListener('click', closeConsentModal);
-  el.aiConsentOkBtn.addEventListener('click', async () => {
-    const cfg = aiConfig();
-    // 同意只对当前域名生效；写入设置后立即生成
-    await updateAiConsent(hostOf(cfg.baseUrl));
-    closeConsentModal();
-    await startGeneration(aiConfig(), buildSummary(state.records, { days: currentDays() }));
-  });
-  el.aiConsentModal.addEventListener('click', e => {
-    if (e.target === e.currentTarget) closeConsentModal();
-  });
-  registerModal(el.aiConsentModal, closeConsentModal);
+  // 提示行里的「重试 / 去设置」是动态插入的，用事件委托
+  if (el.aiWeeklyHint) {
+    const activate = e => {
+      const link = e.target && e.target.closest ? e.target.closest('.ai-weekly-link') : null;
+      if (!link) return;
+      e.preventDefault();
+      if (link.dataset.action === 'retry') {
+        const cfg = aiConfig();
+        if (isConfigured(cfg) && !generating) { lastError = null; generate(cfg); }
+      } else if (link.dataset.action === 'settings') {
+        if (el.settingsBtn) el.settingsBtn.click();
+      }
+    };
+    el.aiWeeklyHint.addEventListener('click', activate);
+    el.aiWeeklyHint.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') activate(e);
+    });
+  }
 
   if (el.aiProvider) el.aiProvider.addEventListener('change', () => applyProviderPreset(false));
   if (el.aiFetchModelsBtn) el.aiFetchModelsBtn.addEventListener('click', handleFetchModels);
   if (el.aiClearKeyBtn) el.aiClearKeyBtn.addEventListener('click', handleClearKey);
+  if (el.aiModelPick) {
+    el.aiModelPick.addEventListener('change', () => {
+      if (el.aiModelPick.value) el.aiModel.value = el.aiModelPick.value;
+    });
+  }
+  // 打开设置时顺手刷新「将发送的内容」预览
+  if (el.settingsBtn) el.settingsBtn.addEventListener('click', updateSendPreview);
 
-  // 记录/筛选变化后重算卡片状态（只重算，不发请求）
-  window.addEventListener('stats-updated', refreshAiInsight);
-  // 时间范围变了，摘要窗口也跟着变 —— 让卡片提示「可以重新生成」
-  if (el.timeRangeSelect) el.timeRangeSelect.addEventListener('change', refreshAiInsight);
+  // 记录/筛选变化后重算状态（只有跨周时才可能触发请求）
+  window.addEventListener('stats-updated', refreshAiWeekly);
 
-  // 首次进入时按当前设置渲染一次
-  refreshAiInsight();
+  refreshAiWeekly();
 }
