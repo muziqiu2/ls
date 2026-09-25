@@ -556,8 +556,13 @@ function createRecordElement(record) {
 function enableSwipeToDelete(recordElement, record, isEditOpen, closeEdit) {
   const contentEl = recordElement.querySelector('.record-content');
   let startX = 0;
+  let startY = 0;
   let isDragging = false;
+  let directionLocked = null; // 'horizontal' | 'vertical' | null（触摸端先判方向再跟手）
   let currentDx = 0;
+
+  // 方向锁阈值：位移超过它才判定方向，避免手指轻微抖动误锁
+  const DIRECTION_LOCK_THRESHOLD = 10;
 
   function resetPosition() {
     contentEl.style.transition = 'transform 0.25s ease';
@@ -569,15 +574,38 @@ function enableSwipeToDelete(recordElement, record, isEditOpen, closeEdit) {
     // 交互控件上不启动滑动；行内编辑展开时不启动
     if (e.target.closest('button,input,select,textarea,a')) return;
     if (isEditOpen()) { closeEdit(); return; }
-    startX = e.touches ? e.touches[0].clientX : e.clientX;
+    const point = e.touches ? e.touches[0] : e;
+    startX = point.clientX;
+    startY = point.clientY;
     isDragging = true;
     currentDx = 0;
+    // 鼠标拖动没有「误滚」问题，直接按水平处理；触摸端先观察方向
+    directionLocked = e.touches ? null : 'horizontal';
   }
 
   function onMove(e) {
     if (!isDragging) return;
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const dx = clientX - startX;
+    const point = e.touches ? e.touches[0] : e;
+    const dx = point.clientX - startX;
+    const dy = point.clientY - startY;
+
+    // 方向尚未锁定时判定：纵向占优即判定为滚动，彻底放弃本次手势
+    if (!directionLocked) {
+      const absX = Math.abs(dx);
+      const absY = Math.abs(dy);
+      if (absX < DIRECTION_LOCK_THRESHOLD && absY < DIRECTION_LOCK_THRESHOLD) {
+        return; // 位移太小，继续观察（不跟手、不阻止滚动）
+      }
+      if (absX > absY * 1.2) {
+        directionLocked = 'horizontal';
+      } else {
+        directionLocked = 'vertical';
+        isDragging = false;
+        currentDx = 0;
+        return; // 不 preventDefault，让页面正常滚动
+      }
+    }
+
     currentDx = Math.min(0, dx); // 只允许左滑
     contentEl.style.transition = 'none';
     contentEl.style.transform = `translateX(${currentDx}px)`;
@@ -586,21 +614,25 @@ function enableSwipeToDelete(recordElement, record, isEditOpen, closeEdit) {
   }
 
   function onEnd() {
-    if (!isDragging) return;
+    if (!isDragging) {
+      directionLocked = null;
+      return;
+    }
     isDragging = false;
-    if (currentDx <= -SWIPE_DELETE_TRIGGER) {
+    if (directionLocked === 'horizontal' && currentDx <= -SWIPE_DELETE_TRIGGER) {
       resetPosition();
       triggerDeleteWithUndo(record);
     } else {
       resetPosition();
     }
     currentDx = 0;
+    directionLocked = null;
   }
 
   recordElement.addEventListener('touchstart', e => { onStart(e); e.stopPropagation(); }, { passive: true });
   recordElement.addEventListener('touchmove', onMove, { passive: false });
   recordElement.addEventListener('touchend', e => { onEnd(); e.stopPropagation(); }, { passive: true });
-  recordElement.addEventListener('touchcancel', e => { isDragging = false; currentDx = 0; resetPosition(); e.stopPropagation(); });
+  recordElement.addEventListener('touchcancel', e => { isDragging = false; currentDx = 0; directionLocked = null; resetPosition(); e.stopPropagation(); });
 
   recordElement.addEventListener('mousedown', e => { onStart(e); e.stopPropagation(); });
   recordElement.addEventListener('mousemove', onMove);
